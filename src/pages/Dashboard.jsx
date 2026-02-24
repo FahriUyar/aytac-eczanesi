@@ -1,6 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
+import { useRecurringCheck } from "../hooks/useRecurringCheck";
 import Card from "../components/ui/Card";
+import CurrencyInput from "../components/ui/CurrencyInput";
+import Button from "../components/ui/Button";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,6 +16,11 @@ import {
   LayoutDashboard,
   ArrowUpRight,
   ArrowDownRight,
+  Zap,
+  Check,
+  X,
+  RefreshCw,
+  Pencil,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -37,14 +46,26 @@ const formatCurrency = (amount) =>
   }).format(amount);
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const { generatedCount, checked: recurringChecked } = useRecurringCheck();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Quick transaction state
+  const [quickCategory, setQuickCategory] = useState(null);
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
+  const [quickSuccess, setQuickSuccess] = useState("");
+  const [showRecurringBanner, setShowRecurringBanner] = useState(true);
+  const [editingQuickActions, setEditingQuickActions] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
+    fetchCategories();
   }, [selectedMonth, selectedYear]);
 
   const fetchTransactions = async () => {
@@ -68,6 +89,76 @@ export default function Dashboard() {
       setTransactions(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .order("name");
+    setCategories(data || []);
+  };
+
+  // ─── Quick action shortcuts (user-managed, stored in localStorage) ───
+  const getQuickActionIds = () => {
+    try {
+      const stored = localStorage.getItem("quickActionIds");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const [quickActionIds, setQuickActionIds] = useState(getQuickActionIds);
+
+  const saveQuickActionIds = (ids) => {
+    setQuickActionIds(ids);
+    localStorage.setItem("quickActionIds", JSON.stringify(ids));
+  };
+
+  const toggleQuickAction = (catId) => {
+    const current = [...quickActionIds];
+    const idx = current.indexOf(catId);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(catId);
+    }
+    saveQuickActionIds(current);
+  };
+
+  const quickActions = useMemo(() => {
+    return quickActionIds
+      .map((id) => categories.find((c) => c.id === id))
+      .filter(Boolean);
+  }, [quickActionIds, categories]);
+
+  // Quick transaction handler
+  const handleQuickSave = async () => {
+    if (!quickCategory || !quickAmount || Number(quickAmount) <= 0) return;
+    setQuickSaving(true);
+
+    const today = new Date().toISOString().split("T")[0];
+    const { error } = await supabase.from("transactions").insert({
+      date: today,
+      amount: Number(quickAmount),
+      type: quickCategory.type,
+      category_id: quickCategory.id,
+      description: null,
+    });
+
+    if (error) {
+      console.error("Quick save error:", error);
+    } else {
+      setQuickSuccess(
+        `${quickCategory.name} — ${formatCurrency(Number(quickAmount))} eklendi!`,
+      );
+      setTimeout(() => setQuickSuccess(""), 3000);
+      setQuickCategory(null);
+      setQuickAmount("");
+      fetchTransactions();
+    }
+    setQuickSaving(false);
   };
 
   const prevMonth = () => {
@@ -251,6 +342,191 @@ export default function Dashboard() {
               </div>
             </Card>
           </div>
+
+          {/* Recurring auto-generated banner */}
+          {recurringChecked && generatedCount > 0 && showRecurringBanner && (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-primary-50 text-primary-700 text-sm font-medium animate-fade-in">
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                {generatedCount} otomatik tekrarlayan işlem oluşturuldu.
+              </span>
+              <button
+                onClick={() => setShowRecurringBanner(false)}
+                className="cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Quick Transaction Success */}
+          {quickSuccess && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success-50 text-success-700 text-sm font-medium animate-fade-in">
+              <Check className="w-4 h-4" />
+              {quickSuccess}
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════
+              QUICK TRANSACTION PANEL
+          ═══════════════════════════════════════════ */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <Zap className="w-5 h-5 text-warning-500" />
+                Hızlı İşlem
+              </h2>
+              <button
+                onClick={() => {
+                  setEditingQuickActions(!editingQuickActions);
+                  setQuickCategory(null);
+                  setQuickAmount("");
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  editingQuickActions
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-text-secondary hover:bg-gray-200"
+                }`}
+              >
+                {editingQuickActions ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Tamam
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="w-3.5 h-3.5" />
+                    Düzenle
+                  </>
+                )}
+              </button>
+            </div>
+
+            {editingQuickActions ? (
+              /* ─── Edit Mode: show all categories with checkboxes ─── */
+              <div className="space-y-2 animate-fade-in">
+                <p className="text-xs text-text-muted mb-2">
+                  Hızlı erişmek istediğiniz kategorileri seçin:
+                </p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {categories.map((cat) => {
+                    const isSelected = quickActionIds.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => toggleQuickAction(cat.id)}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? cat.type === "income"
+                              ? "bg-success-50 border-success-300 text-success-700 ring-1 ring-success-200"
+                              : "bg-danger-50 border-danger-300 text-danger-700 ring-1 ring-danger-200"
+                            : "bg-gray-50 border-gray-200 text-text-muted hover:bg-gray-100"
+                        }`}
+                      >
+                        <span
+                          className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
+                            isSelected
+                              ? cat.type === "income"
+                                ? "bg-success-600 text-white"
+                                : "bg-danger-600 text-white"
+                              : "bg-white border border-gray-300"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3" />}
+                        </span>
+                        <span>{cat.name}</span>
+                        <span
+                          className={`text-xs ml-auto ${isSelected ? "" : "opacity-50"}`}
+                        >
+                          {cat.type === "income" ? "Gelir" : "Gider"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : quickActions.length === 0 ? (
+              /* ─── Empty State ─── */
+              <div className="text-center py-4">
+                <p className="text-sm text-text-muted mb-2">
+                  Henüz hızlı işlem kısayolu eklenmemiş.
+                </p>
+                <button
+                  onClick={() => setEditingQuickActions(true)}
+                  className="text-sm text-primary-600 font-semibold hover:underline cursor-pointer"
+                >
+                  Kısayol eklemek için tıklayın
+                </button>
+              </div>
+            ) : (
+              /* ─── Normal Mode: user's selected quick actions ─── */
+              <div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {quickActions.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() =>
+                        setQuickCategory(
+                          quickCategory?.id === cat.id ? null : cat,
+                        )
+                      }
+                      className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all cursor-pointer ${
+                        quickCategory?.id === cat.id
+                          ? "bg-primary-600 text-white border-primary-600 shadow-md scale-105"
+                          : cat.type === "income"
+                            ? "bg-success-50 text-success-700 border-success-200 hover:bg-success-100 hover:border-success-300"
+                            : "bg-danger-50 text-danger-700 border-danger-200 hover:bg-danger-100 hover:border-danger-300"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Amount input + save (shown when category selected) */}
+                {quickCategory && (
+                  <div className="flex items-end gap-3 animate-fade-in pt-1">
+                    <div className="flex-1 max-w-xs">
+                      <CurrencyInput
+                        label={`${quickCategory.name} — Tutar`}
+                        id="quickAmount"
+                        value={quickAmount}
+                        onValueChange={(value) => setQuickAmount(value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && quickAmount)
+                            handleQuickSave();
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                    <Button
+                      onClick={handleQuickSave}
+                      disabled={quickSaving || !quickAmount}
+                      variant={
+                        quickCategory.type === "income" ? "success" : "danger"
+                      }
+                    >
+                      {quickSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                      ) : (
+                        <Check className="w-4 h-4 mr-1" />
+                      )}
+                      Kaydet
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setQuickCategory(null);
+                        setQuickAmount("");
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
 
           {/* Bottom section: Recent + Category Breakdown */}
           <div className="grid lg:grid-cols-2 gap-6">

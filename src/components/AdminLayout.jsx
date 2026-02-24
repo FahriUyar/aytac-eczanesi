@@ -5,6 +5,8 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   Tags,
+  BarChart3,
+  RefreshCw,
   LogOut,
   Menu,
   X,
@@ -15,6 +17,8 @@ const NAV_ITEMS = [
   { to: "/", label: "Özet", icon: LayoutDashboard },
   { to: "/transactions", label: "İşlemler", icon: ArrowLeftRight },
   { to: "/categories", label: "Kategoriler", icon: Tags },
+  { to: "/reports", label: "Raporlar", icon: BarChart3 },
+  { to: "/recurring", label: "Otomatik İşlemler", icon: RefreshCw },
 ];
 
 export default function AdminLayout() {

@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { exportTransactionsToExcel } from "../utils/exportExcel";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
@@ -18,6 +19,14 @@ import {
   ChevronRight,
   Calendar,
   X,
+  Download,
+  Search,
+  Filter,
+  Pencil,
+  Check,
+  CheckSquare,
+  Square,
+  MinusSquare,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -40,6 +49,12 @@ const TYPE_OPTIONS = [
   { value: "expense", label: "Gider" },
 ];
 
+const ALL_TYPE_OPTIONS = [
+  { value: "", label: "Tümü" },
+  { value: "income", label: "Gelir" },
+  { value: "expense", label: "Gider" },
+];
+
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("tr-TR", {
     style: "currency",
@@ -54,6 +69,15 @@ const formatDate = (dateStr) =>
     year: "numeric",
   });
 
+// ─── Empty Form State ───
+const EMPTY_FORM = {
+  date: new Date().toISOString().split("T")[0],
+  amount: 0,
+  type: "",
+  category_id: "",
+  description: "",
+};
+
 export default function Transactions() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -67,14 +91,27 @@ export default function Transactions() {
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // ─── Edit state ───
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState(null);
+
+  // ─── Search state ───
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // ─── Filter state ───
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterType, setFilterType] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterMinAmount, setFilterMinAmount] = useState("");
+  const [filterMaxAmount, setFilterMaxAmount] = useState("");
+
+  // ─── Bulk select state ───
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   // Form state
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
-    amount: 0,
-    type: "",
-    category_id: "",
-    description: "",
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_FORM });
 
   useEffect(() => {
     fetchCategories();
@@ -83,6 +120,11 @@ export default function Transactions() {
   useEffect(() => {
     fetchTransactions();
   }, [selectedMonth, selectedYear]);
+
+  // Clear selections when data changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [transactions]);
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -123,6 +165,87 @@ export default function Transactions() {
       .map((c) => ({ value: c.id, label: c.name }));
   }, [categories, formData.type]);
 
+  const editCategoryOptions = useMemo(() => {
+    if (!editData) return [];
+    return categories
+      .filter((c) => c.type === editData.type)
+      .map((c) => ({ value: c.id, label: c.name }));
+  }, [categories, editData?.type]);
+
+  // ─── Filtered & searched transactions ───
+  const displayedTransactions = useMemo(() => {
+    let list = [...transactions];
+
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (tx) =>
+          (tx.description || "").toLowerCase().includes(q) ||
+          (tx.categories?.name || "").toLowerCase().includes(q),
+      );
+    }
+
+    // Filter by type
+    if (filterType) {
+      list = list.filter((tx) => tx.type === filterType);
+    }
+
+    // Filter by category
+    if (filterCategory) {
+      list = list.filter((tx) => tx.category_id === filterCategory);
+    }
+
+    // Filter by min amount
+    if (filterMinAmount !== "") {
+      const min = Number(filterMinAmount);
+      if (!isNaN(min)) list = list.filter((tx) => Number(tx.amount) >= min);
+    }
+
+    // Filter by max amount
+    if (filterMaxAmount !== "") {
+      const max = Number(filterMaxAmount);
+      if (!isNaN(max)) list = list.filter((tx) => Number(tx.amount) <= max);
+    }
+
+    return list;
+  }, [
+    transactions,
+    searchQuery,
+    filterType,
+    filterCategory,
+    filterMinAmount,
+    filterMaxAmount,
+  ]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterType) count++;
+    if (filterCategory) count++;
+    if (filterMinAmount !== "") count++;
+    if (filterMaxAmount !== "") count++;
+    return count;
+  }, [filterType, filterCategory, filterMinAmount, filterMaxAmount]);
+
+  const clearFilters = () => {
+    setFilterType("");
+    setFilterCategory("");
+    setFilterMinAmount("");
+    setFilterMaxAmount("");
+  };
+
+  // ─── Category options for filter ───
+  const allCategoryOptions = useMemo(() => {
+    const filtered = filterType
+      ? categories.filter((c) => c.type === filterType)
+      : categories;
+    return [
+      { value: "", label: "Tümü" },
+      ...filtered.map((c) => ({ value: c.id, label: c.name })),
+    ];
+  }, [categories, filterType]);
+
+  // ─── Handlers ───
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -140,13 +263,7 @@ export default function Transactions() {
       setError("İşlem eklenirken hata oluştu.");
       console.error(error);
     } else {
-      setFormData({
-        date: new Date().toISOString().split("T")[0],
-        amount: 0,
-        type: "",
-        category_id: "",
-        description: "",
-      });
+      setFormData({ ...EMPTY_FORM });
       setShowForm(false);
       fetchTransactions();
     }
@@ -163,6 +280,93 @@ export default function Transactions() {
     }
   };
 
+  // ─── Edit handlers ───
+  const startEdit = (tx) => {
+    setEditingId(tx.id);
+    setEditData({
+      date: tx.date,
+      amount: Number(tx.amount),
+      type: tx.type,
+      category_id: tx.category_id || "",
+      description: tx.description || "",
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editData) return;
+    setSaving(true);
+    setError("");
+
+    const { error } = await supabase
+      .from("transactions")
+      .update({
+        date: editData.date,
+        amount: editData.amount,
+        type: editData.type,
+        category_id: editData.category_id || null,
+        description: editData.description.trim() || null,
+      })
+      .eq("id", editingId);
+
+    if (error) {
+      setError("İşlem güncellenirken hata oluştu.");
+      console.error(error);
+    } else {
+      cancelEdit();
+      fetchTransactions();
+    }
+    setSaving(false);
+  };
+
+  // ─── Bulk selection handlers ───
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (
+        prev.size === displayedTransactions.length &&
+        displayedTransactions.length > 0
+      ) {
+        return new Set();
+      }
+      return new Set(displayedTransactions.map((tx) => tx.id));
+    });
+  }, [displayedTransactions]);
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    setError("");
+
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase
+      .from("transactions")
+      .delete()
+      .in("id", ids);
+
+    if (error) {
+      setError("İşlemler silinirken hata oluştu.");
+      console.error(error);
+    } else {
+      setBulkDeleteConfirm(false);
+      setSelectedIds(new Set());
+      fetchTransactions();
+    }
+    setBulkDeleting(false);
+  };
+
+  // ─── Month navigation ───
   const prevMonth = () => {
     if (selectedMonth === 0) {
       setSelectedMonth(11);
@@ -191,6 +395,14 @@ export default function Transactions() {
     return { income, expense, net: income - expense };
   }, [transactions]);
 
+  // ─── Select All state ───
+  const selectAllState = useMemo(() => {
+    if (displayedTransactions.length === 0) return "none";
+    if (selectedIds.size === displayedTransactions.length) return "all";
+    if (selectedIds.size > 0) return "partial";
+    return "none";
+  }, [selectedIds, displayedTransactions]);
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
@@ -204,19 +416,35 @@ export default function Transactions() {
             Gelir ve gider işlemlerinizi yönetin.
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? (
-            <>
-              <X className="w-4 h-4" />
-              Kapat
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              Yeni İşlem
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              exportTransactionsToExcel(
+                transactions,
+                MONTH_NAMES[selectedMonth],
+                selectedYear,
+              )
+            }
+            disabled={loading || transactions.length === 0}
+          >
+            <Download className="w-4 h-4" />
+            Excel'e Aktar
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? (
+              <>
+                <X className="w-4 h-4" />
+                Kapat
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Yeni İşlem
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Add Transaction Form */}
@@ -348,20 +576,287 @@ export default function Transactions() {
         </div>
       </div>
 
+      {/* Search & Filter Bar */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Açıklama veya kategoride ara..."
+              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-border bg-card text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded text-text-muted hover:text-text-secondary cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Toggle */}
+          <Button
+            variant={showFilters ? "primary" : "secondary"}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="w-4 h-4" />
+            Filtrele
+            {activeFilterCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs font-bold rounded-full bg-white/20 text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </Button>
+        </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <Card className="animate-fade-in border-primary-100" padding="p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="w-40">
+                <Select
+                  label="Tür"
+                  id="filterType"
+                  value={filterType}
+                  onChange={(e) => {
+                    setFilterType(e.target.value);
+                    setFilterCategory("");
+                  }}
+                  options={ALL_TYPE_OPTIONS}
+                  placeholder="Tümü"
+                />
+              </div>
+              <div className="w-48">
+                <Select
+                  label="Kategori"
+                  id="filterCategory"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  options={allCategoryOptions}
+                  placeholder="Tümü"
+                />
+              </div>
+              <div className="w-36">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Min Tutar
+                </label>
+                <input
+                  type="number"
+                  value={filterMinAmount}
+                  onChange={(e) => setFilterMinAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-card text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                />
+              </div>
+              <div className="w-36">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Max Tutar
+                </label>
+                <input
+                  type="number"
+                  value={filterMaxAmount}
+                  onChange={(e) => setFilterMaxAmount(e.target.value)}
+                  placeholder="∞"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-card text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                />
+              </div>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="w-3.5 h-3.5" />
+                  Temizle
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-primary-50 border border-primary-200 animate-fade-in">
+          <span className="text-sm font-medium text-primary-700">
+            <CheckSquare className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+            {selectedIds.size} işlem seçildi
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Seçimi Kaldır
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setBulkDeleteConfirm(true)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Seçilenleri Sil
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirm Modal */}
+      {bulkDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <Card className="max-w-sm w-full mx-4 shadow-2xl" padding="p-6">
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-danger-50 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-danger-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Toplu Silme Onayı
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  <strong>{selectedIds.size}</strong> işlemi silmek istediğinize
+                  emin misiniz? Bu işlem geri alınamaz.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => setBulkDeleteConfirm(false)}
+                  disabled={bulkDeleting}
+                >
+                  İptal
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                >
+                  {bulkDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Evet, Sil
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingId && editData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <Card className="max-w-lg w-full mx-4 shadow-2xl" padding="p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-primary-600" />
+                İşlemi Düzenle
+              </h3>
+              <button
+                onClick={cancelEdit}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-text-muted cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <DatePicker
+                  label="Tarih"
+                  id="editDate"
+                  value={editData.date}
+                  onChange={(dateStr) =>
+                    setEditData({ ...editData, date: dateStr })
+                  }
+                />
+                <CurrencyInput
+                  label="Tutar"
+                  id="editAmount"
+                  value={editData.amount}
+                  onValueChange={(num) =>
+                    setEditData({ ...editData, amount: num })
+                  }
+                  required
+                />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Select
+                  label="Tür"
+                  id="editType"
+                  value={editData.type}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      type: e.target.value,
+                      category_id: "",
+                    })
+                  }
+                  options={TYPE_OPTIONS}
+                  placeholder="Gelir / Gider"
+                  required
+                />
+                <Select
+                  label="Kategori"
+                  id="editCategory"
+                  value={editData.category_id}
+                  onChange={(e) =>
+                    setEditData({ ...editData, category_id: e.target.value })
+                  }
+                  options={editCategoryOptions}
+                  placeholder={
+                    editData.type ? "Kategori seçin" : "Önce tür seçin"
+                  }
+                  disabled={!editData.type}
+                />
+              </div>
+              <Input
+                label="Açıklama (opsiyonel)"
+                id="editDescription"
+                value={editData.description}
+                onChange={(e) =>
+                  setEditData({ ...editData, description: e.target.value })
+                }
+                placeholder="İşlem açıklaması..."
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" onClick={cancelEdit} disabled={saving}>
+                  İptal
+                </Button>
+                <Button onClick={saveEdit} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Kaydet
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Transactions Table */}
       <Card padding="p-0" className="overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
-        ) : transactions.length === 0 ? (
+        ) : displayedTransactions.length === 0 ? (
           <div className="text-center py-16 text-text-muted">
             <ArrowLeftRight className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-lg font-medium text-text-secondary">
-              Bu ay için işlem bulunamadı.
+              {searchQuery || activeFilterCount > 0
+                ? "Arama/filtre sonucuna uygun işlem bulunamadı."
+                : "Bu ay için işlem bulunamadı."}
             </p>
             <p className="text-sm mt-1">
-              Yeni bir işlem eklemek için yukarıdaki butonu kullanın.
+              {searchQuery || activeFilterCount > 0
+                ? "Filtreleri değiştirmeyi veya aramayı temizlemeyi deneyin."
+                : "Yeni bir işlem eklemek için yukarıdaki butonu kullanın."}
             </p>
           </div>
         ) : (
@@ -369,6 +864,21 @@ export default function Transactions() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-gray-50/50">
+                  {/* Checkbox header */}
+                  <th className="w-10 px-3 py-3">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="p-0.5 rounded text-text-muted hover:text-primary-600 transition-colors cursor-pointer"
+                    >
+                      {selectAllState === "all" ? (
+                        <CheckSquare className="w-4.5 h-4.5 text-primary-600" />
+                      ) : selectAllState === "partial" ? (
+                        <MinusSquare className="w-4.5 h-4.5 text-primary-600" />
+                      ) : (
+                        <Square className="w-4.5 h-4.5" />
+                      )}
+                    </button>
+                  </th>
                   <th className="text-left px-6 py-3 font-medium text-text-secondary">
                     Tarih
                   </th>
@@ -390,11 +900,26 @@ export default function Transactions() {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((tx) => (
+                {displayedTransactions.map((tx) => (
                   <tr
                     key={tx.id}
-                    className="border-b border-border/50 hover:bg-gray-50/50 transition-colors group"
+                    className={`border-b border-border/50 hover:bg-gray-50/50 transition-colors group ${
+                      selectedIds.has(tx.id) ? "bg-primary-50/40" : ""
+                    }`}
                   >
+                    {/* Checkbox */}
+                    <td className="w-10 px-3 py-3.5">
+                      <button
+                        onClick={() => toggleSelect(tx.id)}
+                        className="p-0.5 rounded text-text-muted hover:text-primary-600 transition-colors cursor-pointer"
+                      >
+                        {selectedIds.has(tx.id) ? (
+                          <CheckSquare className="w-4.5 h-4.5 text-primary-600" />
+                        ) : (
+                          <Square className="w-4.5 h-4.5" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-6 py-3.5 text-text-primary whitespace-nowrap">
                       {formatDate(tx.date)}
                     </td>
@@ -449,12 +974,22 @@ export default function Transactions() {
                           </Button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setDeleteConfirm(tx.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-muted hover:text-danger-600 hover:bg-danger-50 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={() => startEdit(tx)}
+                            className="p-1.5 rounded-lg text-text-muted hover:text-primary-600 hover:bg-primary-50 transition-all cursor-pointer"
+                            title="Düzenle"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(tx.id)}
+                            className="p-1.5 rounded-lg text-text-muted hover:text-danger-600 hover:bg-danger-50 transition-all cursor-pointer"
+                            title="Sil"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -464,6 +999,16 @@ export default function Transactions() {
           </div>
         )}
       </Card>
+
+      {/* Results summary */}
+      {!loading &&
+        transactions.length > 0 &&
+        (searchQuery || activeFilterCount > 0) && (
+          <p className="text-xs text-text-muted text-center">
+            {displayedTransactions.length} / {transactions.length} işlem
+            gösteriliyor
+          </p>
+        )}
     </div>
   );
 }
