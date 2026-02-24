@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { exportTransactionsToExcel } from "../utils/exportExcel";
+import { exportTransactionsToGoogleSheets } from "../utils/exportGoogleSheets";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
@@ -20,6 +21,7 @@ import {
   Calendar,
   X,
   Download,
+  FileSpreadsheet,
   Search,
   Filter,
   Pencil,
@@ -87,6 +89,7 @@ export default function Transactions() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sheetsExporting, setSheetsExporting] = useState(false);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -430,6 +433,27 @@ export default function Transactions() {
           >
             <Download className="w-4 h-4" />
             Excel'e Aktar
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setSheetsExporting(true);
+              try {
+                await exportTransactionsToGoogleSheets(
+                  transactions,
+                  MONTH_NAMES[selectedMonth],
+                  selectedYear,
+                );
+                // Kısa bir süre "Kopyalandı" göster
+                setTimeout(() => setSheetsExporting(false), 2000);
+              } catch {
+                setSheetsExporting(false);
+              }
+            }}
+            disabled={loading || transactions.length === 0 || sheetsExporting}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {sheetsExporting ? "Panoya Kopyalandı!" : "Google E-Tablolar"}
           </Button>
           <Button onClick={() => setShowForm(!showForm)}>
             {showForm ? (
