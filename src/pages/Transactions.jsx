@@ -79,7 +79,28 @@ const EMPTY_FORM = {
   type: "",
   category_id: "",
   description: "",
+  isInstallment: false,
+  installmentCount: 3,
 };
+
+/**
+ * Ay atlama hatasını önleyen güvenli tarih hesaplama.
+ *
+ * Neden bu fonksiyon? JavaScript'te new Date("2025-01-31") üzerine
+ * doğrudan setMonth(2) yaparsak 3 Mart olur çünkü Şubat'ta 31 gün yok.
+ * Bu fonksiyon hedef ayın son günüyle sınırlandırarak bu hatayı önler:
+ * 31 Ocak + 1 ay → 28 Şubat (veya 29, artık yılda)
+ */
+function addMonths(dateStr, n) {
+  const d = new Date(dateStr);
+  const targetMonth = d.getMonth() + n;
+  const year = d.getFullYear() + Math.floor(targetMonth / 12);
+  const month = ((targetMonth % 12) + 12) % 12;
+  // Hedef ayın kaç günü olduğunu bul, günü o sınır içinde tut
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(d.getDate(), lastDay);
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
 
 export default function Transactions() {
   // Görev 1: Kapıdaki kişiyi öğren — tüm sorgular bu user'a göre filtrelenecek
@@ -261,24 +282,56 @@ export default function Transactions() {
     setSaving(true);
     setError("");
 
-    // Görev 3: user_id NOT NULL olduğu için insert'e ekliyoruz
-    const { error } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      date: formData.date,
-      amount: formData.amount,
-      type: formData.type,
-      category_id: formData.category_id || null,
-      description: formData.description.trim() || null,
-    });
+    if (formData.isInstallment && formData.installmentCount > 1) {
+      // ── TAKSİTLİ İŞLEM ──
+      // N adet obje oluşturup tek seferde batch insert yapıyoruz.
+      // Supabase .insert([...]) ile array kabul eder.
+      const count = Number(formData.installmentCount);
+      const baseDesc = formData.description.trim();
 
-    if (error) {
-      setError("İşlem eklenirken hata oluştu.");
-      console.error(error);
+      const rows = Array.from({ length: count }, (_, i) => ({
+        user_id: user.id,
+        date: addMonths(formData.date, i), // her ay 1 ileri
+        amount: formData.amount, // tutar bölünmez, kullanıcı taksit tutarını girer
+        type: formData.type,
+        category_id: formData.category_id || null,
+        // Açıklamaya otomatik taksit numarası eklenir: "Kira (1/3)"
+        description: baseDesc
+          ? `${baseDesc} (${i + 1}/${count})`
+          : `(${i + 1}/${count})`,
+      }));
+
+      const { error } = await supabase.from("transactions").insert(rows);
+      if (error) {
+        setError("Taksitli işlem eklenirken hata oluştu.");
+        console.error(error);
+      } else {
+        setFormData({ ...EMPTY_FORM });
+        setShowForm(false);
+        fetchTransactions();
+      }
     } else {
-      setFormData({ ...EMPTY_FORM });
-      setShowForm(false);
-      fetchTransactions();
+      // ── TEK İŞLEM ──
+      // Görev 3: user_id NOT NULL olduğu için insert'e ekliyoruz
+      const { error } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        date: formData.date,
+        amount: formData.amount,
+        type: formData.type,
+        category_id: formData.category_id || null,
+        description: formData.description.trim() || null,
+      });
+
+      if (error) {
+        setError("İşlem eklenirken hata oluştu.");
+        console.error(error);
+      } else {
+        setFormData({ ...EMPTY_FORM });
+        setShowForm(false);
+        fetchTransactions();
+      }
     }
+
     setSaving(false);
   };
 
@@ -545,6 +598,69 @@ export default function Transactions() {
               }
               placeholder="İşlem açıklaması..."
             />
+
+            {/* ── TAKSİT ALANI ──
+                Checkbox işaretlenince açıkça görünür hale gelir.
+                Neden burada? Kullanıcı tek taksit de girebilir (normal işlem),
+                ya da birden fazla ay döşontirmek isteyebilir. */}
+            <div className="flex flex-wrap items-center gap-4 pt-1">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  id="txInstallment"
+                  checked={formData.isInstallment}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      isInstallment: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-text-secondary">
+                  Taksitli İşlem
+                </span>
+              </label>
+
+              {formData.isInstallment && (
+                <div className="flex items-center gap-3 animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-text-secondary whitespace-nowrap">
+                      Taksit Sayısı:
+                    </label>
+                    <select
+                      value={formData.installmentCount}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          installmentCount: Number(e.target.value),
+                        })
+                      }
+                      className="px-3 py-2 text-sm rounded-xl border border-border bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n} ay
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {formData.amount > 0 && (
+                    <span className="text-xs text-text-muted">
+                      Her ay:{" "}
+                      <strong className="text-primary-700">
+                        {new Intl.NumberFormat("tr-TR", {
+                          style: "currency",
+                          currency: "TRY",
+                          minimumFractionDigits: 0,
+                        }).format(formData.amount)}
+                      </strong>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>
                 {saving ? (
@@ -552,7 +668,9 @@ export default function Transactions() {
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-                İşlemi Kaydet
+                {formData.isInstallment && formData.installmentCount > 1
+                  ? `${formData.installmentCount} Taksit Ekle`
+                  : "İşlemi Kaydet"}
               </Button>
             </div>
           </form>

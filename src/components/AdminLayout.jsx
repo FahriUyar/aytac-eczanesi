@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useTenant } from "../hooks/useTenant";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -10,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  Pill,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -25,6 +25,12 @@ export default function AdminLayout() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Neden useTenant? Tüm marka bilgisi (isim, ikon, renkler) tek yerden gelsin.
+  // CSS custom properties bu hook içinde güncelleniyor, bu yüzden burada
+  // çağırmak yeterli — tüm uygulama doğru renkle render edilir.
+  const tenant = useTenant();
+  const TenantIcon = tenant.Icon;
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,16 +53,16 @@ export default function AdminLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Logo */}
+        {/* Logo — domain'e göre dinamik isim ve ikon */}
         <div className="h-16 flex items-center gap-3 px-6 border-b border-white/10">
           <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Pill className="w-5 h-5 text-white" />
+            <TenantIcon className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg leading-tight">
-              Aytaç
+              {tenant.appName}
             </h1>
-            <p className="text-white/50 text-xs">Eczane Yönetimi</p>
+            <p className="text-white/50 text-xs">{tenant.subtitle}</p>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -108,7 +114,7 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar (Mobile) */}
+        {/* Top Bar (Mobile) — domain'e göre dinamik */}
         <header className="h-16 flex items-center gap-4 px-4 lg:px-8 bg-card border-b border-border lg:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -118,9 +124,11 @@ export default function AdminLayout() {
           </button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center">
-              <Pill className="w-4 h-4 text-white" />
+              <TenantIcon className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-text-primary">Aytaç Eczanesi</span>
+            <span className="font-bold text-text-primary">
+              {tenant.appName}
+            </span>
           </div>
         </header>
 
