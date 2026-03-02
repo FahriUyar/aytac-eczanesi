@@ -284,18 +284,21 @@ export default function Transactions() {
 
     if (formData.isInstallment && formData.installmentCount > 1) {
       // ── TAKSİTLİ İŞLEM ──
-      // N adet obje oluşturup tek seferde batch insert yapıyoruz.
-      // Supabase .insert([...]) ile array kabul eder.
+      // Kullanıcı TOPLAM tutarı girer, biz taksit sayısına böleriz.
+      // Örn: 12.000 TL / 6 taksit = 2.000 TL/ay
       const count = Number(formData.installmentCount);
       const baseDesc = formData.description.trim();
 
+      // Küsuratlı tutarlar için 2 ondalık basamağa yuvarla
+      // Örn: 1000 / 3 → 333.33
+      const monthlyAmount = Math.round((formData.amount / count) * 100) / 100;
+
       const rows = Array.from({ length: count }, (_, i) => ({
         user_id: user.id,
-        date: addMonths(formData.date, i), // her ay 1 ileri
-        amount: formData.amount, // tutar bölünmez, kullanıcı taksit tutarını girer
+        date: addMonths(formData.date, i),
+        amount: monthlyAmount, // bölünmüş aylık tutar
         type: formData.type,
         category_id: formData.category_id || null,
-        // Açıklamaya otomatik taksit numarası eklenir: "Kira (1/3)"
         description: baseDesc
           ? `${baseDesc} (${i + 1}/${count})`
           : `(${i + 1}/${count})`,
@@ -652,8 +655,12 @@ export default function Transactions() {
                         {new Intl.NumberFormat("tr-TR", {
                           style: "currency",
                           currency: "TRY",
-                          minimumFractionDigits: 0,
-                        }).format(formData.amount)}
+                          minimumFractionDigits: 2,
+                        }).format(
+                          Math.round(
+                            (formData.amount / formData.installmentCount) * 100,
+                          ) / 100,
+                        )}
                       </strong>
                     </span>
                   )}
