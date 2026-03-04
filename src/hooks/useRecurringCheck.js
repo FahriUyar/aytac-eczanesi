@@ -14,10 +14,11 @@ export function useRecurringCheck() {
 
   const checkAndGenerate = async () => {
     try {
-      // 1. Fetch active recurring transactions
+      // 1. Fetch active recurring transactions — sadece bu kullanıcıya ait
       const { data: recurring, error: recError } = await supabase
         .from("recurring_transactions")
         .select("*, categories(name)")
+        .eq("user_id", user.id)
         .eq("is_active", true);
 
       if (recError || !recurring?.length) {
@@ -48,12 +49,13 @@ export function useRecurringCheck() {
           const dayToGenerate = rec.day_of_month || 1;
           if (today < dayToGenerate) continue;
 
-          // Generate the transaction
+          // Generate the transaction — user_id zorunlu
           const genDate = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(dayToGenerate).padStart(2, "0")}`;
 
           const { error: insertError } = await supabase
             .from("transactions")
             .insert({
+              user_id: user.id,
               date: genDate,
               amount: rec.amount,
               type: rec.type,
@@ -86,6 +88,7 @@ export function useRecurringCheck() {
           const { error: insertError } = await supabase
             .from("transactions")
             .insert({
+              user_id: user.id,
               date: genDate,
               amount: rec.amount,
               type: rec.type,
