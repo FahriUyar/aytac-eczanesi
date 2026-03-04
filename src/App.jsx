@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { ProfileProvider } from "./hooks/useProfile";
 import PrivateRoute from "./components/PrivateRoute";
 import AdminLayout from "./components/AdminLayout";
 import Login from "./pages/Login";
@@ -9,22 +10,31 @@ import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import RecurringTransactions from "./pages/RecurringTransactions";
 
+/**
+ * Neden ProfileProvider PrivateRoute'un dışında?
+ * ProfileProvider içinde useAuth()'tan user bilgisine erişiyor.
+ * AuthProvider > ProfileProvider sıralaması gerekli.
+ * PrivateRoute ise ProfileProvider'ın sağladığı needsOnboarding
+ * bilgisini kullanarak onboarding/uygulama ayrımını yapıyor.
+ */
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<PrivateRoute />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/recurring" element={<RecurringTransactions />} />
+        <ProfileProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<PrivateRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/recurring" element={<RecurringTransactions />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </ProfileProvider>
       </AuthProvider>
     </BrowserRouter>
   );

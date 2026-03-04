@@ -4,29 +4,35 @@
  * Neden bu dosya? Tek kod tabanı, birden fazla domain.
  * window.location.hostname'i okuyarak hangi "kiracı" için
  * çalıştığımızı anlıyoruz ve ona özgü marka bilgilerini döndürüyoruz.
+ *
+ * Güncelleme: Eczaneye özgü yeşil renk paleti kaldırıldı.
+ * Artık varsayılan tema nötr lacivert/kurumsal bir palet.
+ * Kullanıcının kişisel app_name bilgisi profiles tablosundan
+ * (useProfile hook aracılığıyla) geliyor — buradaki appName
+ * sadece profil yüklenene kadarki fallback.
  */
 
-import { Pill, Home } from "lucide-react";
+import { BarChart3, Home } from "lucide-react";
 
 const TENANTS = {
-  eczane: {
-    key: "eczane",
-    appName: "Aytaç Eczanesi",
-    subtitle: "Eczane Yönetimi",
-    Icon: Pill,
-    // Mavi-Yeşil sağlık paleti
+  // Varsayılan — nötr kurumsal lacivert palet
+  default: {
+    key: "default",
+    appName: "Bilanço Takip",
+    subtitle: "Finansal Yönetim",
+    Icon: BarChart3,
     colors: {
-      "--color-primary-50": "#ecfdf5",
-      "--color-primary-100": "#d1fae5",
-      "--color-primary-200": "#a7f3d0",
-      "--color-primary-300": "#6ee7b7",
-      "--color-primary-400": "#34d399",
-      "--color-primary-500": "#10b981",
-      "--color-primary-600": "#059669",
-      "--color-primary-700": "#047857",
-      "--color-primary-800": "#065f46",
-      "--color-primary-900": "#064e3b",
-      "--color-sidebar": "#064e3b",
+      "--color-primary-50": "#eff6ff",
+      "--color-primary-100": "#dbeafe",
+      "--color-primary-200": "#bfdbfe",
+      "--color-primary-300": "#93c5fd",
+      "--color-primary-400": "#60a5fa",
+      "--color-primary-500": "#3b82f6",
+      "--color-primary-600": "#2563eb",
+      "--color-primary-700": "#1d4ed8",
+      "--color-primary-800": "#1e40af",
+      "--color-primary-900": "#1e3a8a",
+      "--color-sidebar": "#1e293b",
     },
   },
 
@@ -40,7 +46,7 @@ const TENANTS = {
       "--color-primary-50": "#fdf4ff",
       "--color-primary-100": "#fae8ff",
       "--color-primary-200": "#f5d0fe",
-      "--color-primary-300": "#e879f9", // daha canlı
+      "--color-primary-300": "#e879f9",
       "--color-primary-400": "#d946ef",
       "--color-primary-500": "#a855f7",
       "--color-primary-600": "#9333ea",
@@ -55,7 +61,7 @@ const TENANTS = {
 /**
  * Hostname'e göre doğru tenant config'i döndürür.
  * localhost'ta test ederken domain içerip içermediğine bakar,
- * varsayılan olarak eczane döner.
+ * varsayılan olarak nötr (default) döner.
  */
 export function getTenantConfig() {
   const host = window.location.hostname;
@@ -64,6 +70,6 @@ export function getTenantConfig() {
     return TENANTS.ev;
   }
 
-  // aytac-eczanesi.vercel.app, localhost ve diğerleri → eczane
-  return TENANTS.eczane;
+  // aytac-eczanesi.vercel.app, localhost ve diğerleri → varsayılan nötr tema
+  return TENANTS.default;
 }

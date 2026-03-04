@@ -1,18 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Pill, Eye, EyeOff, Loader2 } from "lucide-react";
+import { BarChart3, Eye, EyeOff, Loader2 } from "lucide-react";
+
+/**
+ * Neden tek sayfada iki tab?
+ * Kullanıcıyı ayrı bir /register rotasına yönlendirmek yerine,
+ * aynı kart içinde "Giriş Yap / Kayıt Ol" tabları sunuyoruz.
+ * Böylece UX daha akıcı ve tek bir bileşenle yönetilebilir.
+ */
+
+const INVITE_CODE = "FAHRI_VIP_2026";
 
 export default function Login() {
+  const [activeTab, setActiveTab] = useState("login"); // "login" | "register"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setReferralCode("");
+    setError("");
+    setSuccess("");
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    resetForm();
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -31,6 +56,50 @@ export default function Login() {
     }
   };
 
+  /**
+   * Neden frontend'de davet kodu kontrolü?
+   * Bu bir "hız kesici" (speed bump) — internetten URL'yi bulan herkesin
+   * rasgele kayıt olmasını engeller. Davet kodu eşleşmezse
+   * supabase.auth.signUp KESİNLİKLE çağrılmaz.
+   */
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    // Davet kodu doğrulaması — eşleşmezse Supabase'e istek bile atmıyoruz
+    if (referralCode.trim() !== INVITE_CODE) {
+      setError("Geçersiz Davet Kodu. Lütfen size verilen kodu girin.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await signUp(email, password);
+      setSuccess(
+        "Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın, ardından giriş yapın.",
+      );
+      // Kayıt sonrası otomatik giriş tabına geçiş (3 sn sonra)
+      setTimeout(() => {
+        setActiveTab("login");
+        setSuccess("");
+        setEmail("");
+        setPassword("");
+        setReferralCode("");
+      }, 3000);
+    } catch (err) {
+      setError(
+        err.message ||
+          "Kayıt yapılırken bir hata oluştu. Lütfen tekrar deneyin.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isLogin = activeTab === "login";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-sidebar p-4">
       {/* Background decoration */}
@@ -40,28 +109,62 @@ export default function Login() {
       </div>
 
       <div className="relative w-full max-w-md animate-fade-in">
-        {/* Logo */}
+        {/* Logo — nötr marka */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl shadow-lg shadow-primary-600/30 mb-4">
-            <Pill className="w-8 h-8 text-white" />
+            <BarChart3 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Aytaç Eczanesi</h1>
-          <p className="text-primary-200/60 mt-1">Bilanço Takip Sistemi</p>
+          <h1 className="text-2xl font-bold text-white">Bilanço Takip</h1>
+          <p className="text-primary-200/60 mt-1">Finansal Yönetim Sistemi</p>
         </div>
 
-        {/* Login Card */}
+        {/* Card */}
         <div className="bg-card rounded-2xl shadow-2xl border border-white/10 p-8">
-          <h2 className="text-xl font-semibold text-text-primary mb-6">
-            Giriş Yap
-          </h2>
+          {/* Tabs */}
+          <div className="flex mb-6 bg-surface rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => handleTabChange("login")}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                isLogin
+                  ? "bg-primary-600 text-white shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              Giriş Yap
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("register")}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                !isLogin
+                  ? "bg-primary-600 text-white shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              Kayıt Ol
+            </button>
+          </div>
 
+          {/* Error */}
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-danger-50 border border-danger-500/20 text-danger-700 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Success */}
+          {success && (
+            <div className="mb-4 p-3 rounded-xl bg-success-50 border border-success-500/20 text-success-700 text-sm animate-fade-in">
+              {success}
+            </div>
+          )}
+
+          <form
+            onSubmit={isLogin ? handleLogin : handleRegister}
+            className="space-y-4"
+          >
+            {/* Email */}
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
@@ -80,6 +183,7 @@ export default function Login() {
               />
             </div>
 
+            {/* Password */}
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
@@ -95,6 +199,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  minLength={6}
                   className="w-full px-4 py-2.5 pr-12 rounded-xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                 />
                 <button
@@ -111,6 +216,31 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Davet Kodu — sadece Kayıt Ol modunda */}
+            {!isLogin && (
+              <div className="space-y-1.5 animate-fade-in">
+                <label
+                  htmlFor="referralCode"
+                  className="block text-sm font-medium text-text-primary"
+                >
+                  Davet Kodu
+                </label>
+                <input
+                  id="referralCode"
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                  placeholder="Size verilen davet kodunu girin"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                />
+                <p className="text-xs text-text-muted">
+                  Kayıt olmak için geçerli bir davet koduna ihtiyacınız var.
+                </p>
+              </div>
+            )}
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -119,17 +249,19 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Giriş yapılıyor...
+                  {isLogin ? "Giriş yapılıyor..." : "Kayıt yapılıyor..."}
                 </>
-              ) : (
+              ) : isLogin ? (
                 "Giriş Yap"
+              ) : (
+                "Kayıt Ol"
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-primary-200/40 text-xs mt-6">
-          © 2026 Aytaç Eczanesi — Bilanço Takip
+          © 2026 Bilanço Takip — Finansal Yönetim
         </p>
       </div>
     </div>
