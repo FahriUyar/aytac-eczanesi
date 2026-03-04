@@ -83,7 +83,8 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .gte("date", startDate)
       .lt("date", endDate)
-      .order("date", { ascending: false });
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error(error);
