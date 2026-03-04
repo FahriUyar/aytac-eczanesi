@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProfileProvider } from "./hooks/useProfile";
 import PrivateRoute from "./components/PrivateRoute";
@@ -38,6 +39,7 @@ export default function App() {
             </Route>
           </Routes>
           <Analytics />
+          <SpeedInsights />
         </ProfileProvider>
       </AuthProvider>
     </BrowserRouter>
