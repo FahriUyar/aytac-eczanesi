@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProfileProvider } from "./hooks/useProfile";
 import PrivateRoute from "./components/PrivateRoute";
@@ -34,6 +35,7 @@ export default function App() {
               </Route>
             </Route>
           </Routes>
+          <Analytics />
         </ProfileProvider>
       </AuthProvider>
     </BrowserRouter>
