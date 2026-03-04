@@ -49,7 +49,9 @@ export default function Login() {
       setError(
         err.message === "Invalid login credentials"
           ? "E-posta veya şifre hatalı."
-          : "Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.",
+          : err.message?.includes("Email not confirmed")
+            ? "E-posta adresiniz henüz doğrulanmamış. Supabase panelinden kullanıcıyı onaylayın."
+            : `Giriş hatası: ${err.message || "Bilinmeyen hata. Lütfen tekrar deneyin."}`,
       );
     } finally {
       setLoading(false);
