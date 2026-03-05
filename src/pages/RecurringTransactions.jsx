@@ -68,6 +68,7 @@ export default function RecurringTransactions() {
     description: "",
     frequency: "monthly",
     day_of_month: 1,
+    payment_method: "cash",
   });
   const [saving, setSaving] = useState(false);
 
@@ -116,6 +117,7 @@ export default function RecurringTransactions() {
       description: "",
       frequency: "monthly",
       day_of_month: 1,
+      payment_method: "cash",
     });
     setEditingId(null);
     setShowForm(false);
@@ -129,6 +131,7 @@ export default function RecurringTransactions() {
       description: item.description || "",
       frequency: item.frequency,
       day_of_month: item.day_of_month || 1,
+      payment_method: item.payment_method || "cash",
     });
     setEditingId(item.id);
     setShowForm(true);
@@ -152,6 +155,8 @@ export default function RecurringTransactions() {
       day_of_month:
         formData.frequency === "monthly" ? formData.day_of_month : null,
       user_id: user.id,
+      payment_method:
+        formData.type === "expense" ? formData.payment_method : "cash",
     };
 
     let result;
@@ -188,6 +193,8 @@ export default function RecurringTransactions() {
             ? `${formData.description.trim()} (otomatik)`
             : "Otomatik tekrarlayan işlem",
           group_id: groupId,
+          payment_method:
+            formData.type === "expense" ? formData.payment_method : "cash",
         }));
 
         const { error: bulkError } = await supabase
@@ -375,6 +382,45 @@ export default function RecurringTransactions() {
               }
             />
           </div>
+
+          {/* Ödeme Yöntemi — sadece Gider için */}
+          {formData.type === "expense" && (
+            <div className="flex items-center gap-4 animate-fade-in">
+              <span className="text-sm font-medium text-text-secondary">
+                Ödeme Yöntemi:
+              </span>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="radio"
+                  name="recPaymentMethod"
+                  value="cash"
+                  checked={formData.payment_method === "cash"}
+                  onChange={() =>
+                    setFormData({ ...formData, payment_method: "cash" })
+                  }
+                  className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm text-text-secondary">
+                  🏦 Nakit / Banka
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="radio"
+                  name="recPaymentMethod"
+                  value="credit_card"
+                  checked={formData.payment_method === "credit_card"}
+                  onChange={() =>
+                    setFormData({ ...formData, payment_method: "credit_card" })
+                  }
+                  className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm text-text-secondary">
+                  💳 Kredi Kartı
+                </span>
+              </label>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 mt-5">
             <Button variant="ghost" onClick={resetForm}>

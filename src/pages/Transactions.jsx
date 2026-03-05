@@ -74,7 +74,6 @@ const formatDate = (dateStr) =>
     year: "numeric",
   });
 
-// ─── Empty Form State ───
 const EMPTY_FORM = {
   date: new Date().toISOString().split("T")[0],
   amount: 0,
@@ -84,6 +83,7 @@ const EMPTY_FORM = {
   isInstallment: false,
   installmentCount: 3,
   is_transfer: false,
+  payment_method: "cash",
 };
 
 /**
@@ -336,7 +336,7 @@ export default function Transactions() {
       const rows = Array.from({ length: count }, (_, i) => ({
         user_id: user.id,
         date: addMonths(formData.date, i),
-        amount: monthlyAmount, // bölünmüş aylık tutar
+        amount: monthlyAmount,
         type: formData.type,
         category_id: formData.category_id || null,
         description: baseDesc
@@ -344,6 +344,7 @@ export default function Transactions() {
           : `(${i + 1}/${count})`,
         is_transfer: formData.is_transfer,
         group_id: groupId,
+        payment_method: formData.payment_method,
       }));
 
       const { error } = await supabase.from("transactions").insert(rows);
@@ -366,6 +367,7 @@ export default function Transactions() {
         category_id: formData.category_id || null,
         description: formData.description.trim() || null,
         is_transfer: formData.is_transfer,
+        payment_method: formData.payment_method,
       });
 
       if (error) {
@@ -415,6 +417,7 @@ export default function Transactions() {
       category_id: tx.category_id || "",
       description: tx.description || "",
       is_transfer: tx.is_transfer || false,
+      payment_method: tx.payment_method || "cash",
     });
   };
 
@@ -437,6 +440,7 @@ export default function Transactions() {
         category_id: editData.category_id || null,
         description: editData.description.trim() || null,
         is_transfer: editData.is_transfer,
+        payment_method: editData.payment_method,
       })
       .eq("id", editingId);
 
@@ -754,25 +758,74 @@ export default function Transactions() {
                 Sadece "Gider" seçiliyken görünür.
                 İşaretlenirse toplam gider hesabından hariç tutulur. */}
             {formData.type === "expense" && (
-              <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1 animate-fade-in">
-                <input
-                  type="checkbox"
-                  id="txIsTransfer"
-                  checked={formData.is_transfer}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      is_transfer: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-primary-500" />
-                  Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
-                  tut)
-                </span>
-              </label>
+              <div className="space-y-3 pt-1 animate-fade-in">
+                {/* Ödeme Yöntemi */}
+                {!formData.is_transfer && (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-text-secondary">
+                      Ödeme Yöntemi:
+                    </span>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="txPaymentMethod"
+                        value="cash"
+                        checked={formData.payment_method === "cash"}
+                        onChange={() =>
+                          setFormData({ ...formData, payment_method: "cash" })
+                        }
+                        className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                      />
+                      <span className="text-sm text-text-secondary">
+                        🏦 Nakit / Banka
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="txPaymentMethod"
+                        value="credit_card"
+                        checked={formData.payment_method === "credit_card"}
+                        onChange={() =>
+                          setFormData({
+                            ...formData,
+                            payment_method: "credit_card",
+                          })
+                        }
+                        className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                      />
+                      <span className="text-sm text-text-secondary">
+                        💳 Kredi Kartı
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Kredi Kartı Borç Ödemesi */}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    id="txIsTransfer"
+                    checked={formData.is_transfer}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_transfer: e.target.checked,
+                        // Borç ödemesi ise, para nakitten çıkar
+                        payment_method: e.target.checked
+                          ? "cash"
+                          : formData.payment_method,
+                      })
+                    }
+                    className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-primary-500" />
+                    Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
+                    tut)
+                  </span>
+                </label>
+              </div>
             )}
 
             <div className="flex justify-end">
@@ -1109,24 +1162,72 @@ export default function Transactions() {
                 placeholder="İşlem açıklaması..."
               />
               {editData.type === "expense" && (
-                <label className="flex items-center gap-2.5 cursor-pointer select-none animate-fade-in">
-                  <input
-                    type="checkbox"
-                    checked={editData.is_transfer}
-                    onChange={(e) =>
-                      setEditData({
-                        ...editData,
-                        is_transfer: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-primary-500" />
-                    Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
-                    tut)
-                  </span>
-                </label>
+                <div className="space-y-3 animate-fade-in">
+                  {/* Ödeme Yöntemi */}
+                  {!editData.is_transfer && (
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-medium text-text-secondary">
+                        Ödeme Yöntemi:
+                      </span>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="editPaymentMethod"
+                          value="cash"
+                          checked={editData.payment_method === "cash"}
+                          onChange={() =>
+                            setEditData({ ...editData, payment_method: "cash" })
+                          }
+                          className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                        />
+                        <span className="text-sm text-text-secondary">
+                          🏦 Nakit / Banka
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="editPaymentMethod"
+                          value="credit_card"
+                          checked={editData.payment_method === "credit_card"}
+                          onChange={() =>
+                            setEditData({
+                              ...editData,
+                              payment_method: "credit_card",
+                            })
+                          }
+                          className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
+                        />
+                        <span className="text-sm text-text-secondary">
+                          💳 Kredi Kartı
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Borç Ödemesi */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editData.is_transfer}
+                      onChange={(e) =>
+                        setEditData({
+                          ...editData,
+                          is_transfer: e.target.checked,
+                          payment_method: e.target.checked
+                            ? "cash"
+                            : editData.payment_method,
+                        })
+                      }
+                      className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-primary-500" />
+                      Bu bir kredi kartı / borç ödemesidir (Toplam giderden
+                      hariç tut)
+                    </span>
+                  </label>
+                </div>
               )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={cancelEdit} disabled={saving}>

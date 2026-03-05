@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Pencil,
   CreditCard,
+  Banknote,
 } from "lucide-react";
 
 // MONTH_NAMES artık salaryCycle.js içinde — burada kullanılmıyor.
@@ -172,10 +173,42 @@ export default function Dashboard() {
     const income = transactions
       .filter((t) => t.type === "income")
       .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expense = transactions
-      .filter((t) => t.type === "expense" && !t.is_transfer)
+
+    // Nakit giderler (is_transfer dahil — çünkü borcu nakitten öderiz)
+    const cashExpenses = transactions
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          (t.payment_method || "cash") === "cash" &&
+          !t.is_transfer,
+      )
       .reduce((sum, t) => sum + Number(t.amount), 0);
-    return { income, expense, net: income - expense };
+
+    // Kredi kartı borç ödemeleri (is_transfer === true) — nakitten çıkar, KK borcundan düşer
+    const transferPayments = transactions
+      .filter((t) => t.type === "expense" && t.is_transfer)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // Kredi kartı giderleri (borç havuzu)
+    const creditCardExpenses = transactions
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          (t.payment_method || "cash") === "credit_card" &&
+          !t.is_transfer,
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // 🏦 Bankadaki Para = Gelir − Nakit giderler − KK borç ödemeleri
+    const cashBalance = income - cashExpenses - transferPayments;
+
+    // 💳 Güncel KK Borcu = KK giderleri − KK ödemeleri
+    const creditDebt = creditCardExpenses - transferPayments;
+
+    // 📊 Toplam Harcama (bütçe takibi) = Nakit + KK giderleri (is_transfer hariç)
+    const totalSpending = cashExpenses + creditCardExpenses;
+
+    return { income, cashBalance, creditDebt, totalSpending };
   }, [transactions]);
 
   const recentTransactions = useMemo(
@@ -249,30 +282,63 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Summary Cards */}
+          {/* Summary Cards — İki Kova Muhasebesi */}
           <div className="grid sm:grid-cols-3 gap-4 lg:gap-6">
-            {/* Total Income */}
+            {/* 🏦 Bankadaki Para */}
             <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
               <div className="absolute top-0 right-0 w-24 h-24 bg-success-500/5 rounded-bl-[60px] group-hover:bg-success-500/10 transition-colors" />
               <div className="relative">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-success-50 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-success-600" />
+                    <Banknote className="w-5 h-5 text-success-600" />
                   </div>
                   <span className="text-sm font-medium text-text-secondary">
-                    Toplam Gelir
+                    Bankadaki Paran
                   </span>
                 </div>
-                <p className="text-2xl lg:text-3xl font-bold text-success-700">
-                  {formatCurrency(totals.income)}
+                <p
+                  className={`text-2xl lg:text-3xl font-bold ${
+                    totals.cashBalance >= 0
+                      ? "text-success-700"
+                      : "text-danger-700"
+                  }`}
+                >
+                  {formatCurrency(totals.cashBalance)}
                 </p>
                 <p className="text-xs text-text-muted mt-1">
-                  {transactions.filter((t) => t.type === "income").length} işlem
+                  Gelir − Nakit giderler − KK ödemeleri
                 </p>
               </div>
             </Card>
 
-            {/* Total Expense */}
+            {/* 💳 Kredi Kartı Borcu */}
+            <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-warning-500/5 rounded-bl-[60px] group-hover:bg-warning-500/10 transition-colors" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-warning-50 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-warning-600" />
+                  </div>
+                  <span className="text-sm font-medium text-text-secondary">
+                    Kredi Kartı Borcun
+                  </span>
+                </div>
+                <p
+                  className={`text-2xl lg:text-3xl font-bold ${
+                    totals.creditDebt > 0
+                      ? "text-warning-700"
+                      : "text-success-700"
+                  }`}
+                >
+                  {formatCurrency(Math.max(0, totals.creditDebt))}
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  KK harcamaları − KK ödemeleri
+                </p>
+              </div>
+            </Card>
+
+            {/* 📊 Bu Ay Toplam Harcama */}
             <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
               <div className="absolute top-0 right-0 w-24 h-24 bg-danger-500/5 rounded-bl-[60px] group-hover:bg-danger-500/10 transition-colors" />
               <div className="relative">
@@ -281,62 +347,14 @@ export default function Dashboard() {
                     <TrendingDown className="w-5 h-5 text-danger-600" />
                   </div>
                   <span className="text-sm font-medium text-text-secondary">
-                    Toplam Gider
+                    Toplam Harcama
                   </span>
                 </div>
                 <p className="text-2xl lg:text-3xl font-bold text-danger-700">
-                  {formatCurrency(totals.expense)}
+                  {formatCurrency(totals.totalSpending)}
                 </p>
                 <p className="text-xs text-text-muted mt-1">
-                  {transactions.filter((t) => t.type === "expense").length}{" "}
-                  işlem
-                </p>
-              </div>
-            </Card>
-
-            {/* Net */}
-            <Card
-              className={`relative overflow-hidden group hover:shadow-md transition-shadow ${
-                totals.net >= 0
-                  ? "ring-1 ring-success-200"
-                  : "ring-1 ring-danger-200"
-              }`}
-            >
-              <div
-                className={`absolute top-0 right-0 w-24 h-24 rounded-bl-[60px] transition-colors ${
-                  totals.net >= 0
-                    ? "bg-primary-500/5 group-hover:bg-primary-500/10"
-                    : "bg-warning-500/5 group-hover:bg-warning-500/10"
-                }`}
-              />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      totals.net >= 0 ? "bg-primary-50" : "bg-warning-50"
-                    }`}
-                  >
-                    <Wallet
-                      className={`w-5 h-5 ${
-                        totals.net >= 0
-                          ? "text-primary-600"
-                          : "text-warning-600"
-                      }`}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-text-secondary">
-                    Net Durum
-                  </span>
-                </div>
-                <p
-                  className={`text-2xl lg:text-3xl font-bold ${
-                    totals.net >= 0 ? "text-primary-700" : "text-danger-700"
-                  }`}
-                >
-                  {formatCurrency(totals.net)}
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  {totals.net >= 0 ? "Kâr" : "Zarar"}
+                  Nakit + KK giderleri (borç ödemesi hariç)
                 </p>
               </div>
             </Card>
