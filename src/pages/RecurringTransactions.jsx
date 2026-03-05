@@ -167,13 +167,55 @@ export default function RecurringTransactions() {
         .from("recurring_transactions")
         .update(updatePayload)
         .eq("id", editingId);
-    } else {
-      // Yeni kayıt: recurring_transactions'a ekle + 12 ay önden yaz
-      result = await supabase.from("recurring_transactions").insert(payload);
 
       if (!result.error) {
+        // Eski kopyaları (bugünden itibaren olanları) sil
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { error: deleteError } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("group_id", editingId)
+          .gte("date", todayStr);
+
+        if (!deleteError) {
+          // Yeni ayarlarla 12 ay ileriye doğru BASTAN YAZ
+          const today = new Date();
+          const dayOfMonth =
+            formData.frequency === "monthly"
+              ? formData.day_of_month
+              : today.getDate();
+
+          const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+
+          const rows = Array.from({ length: 12 }, (_, i) => ({
+            user_id: user.id,
+            date: addMonths(startDate, i),
+            amount: Number(formData.amount),
+            type: formData.type,
+            category_id: formData.category_id || null,
+            description: formData.description.trim()
+              ? `${formData.description.trim()} (otomatik)`
+              : "Otomatik tekrarlayan işlem",
+            group_id: editingId, // KENDI ID'si
+            payment_method:
+              formData.type === "expense" ? formData.payment_method : "cash",
+          }));
+
+          await supabase.from("transactions").insert(rows);
+        }
+      }
+    } else {
+      // Yeni kayıt: recurring_transactions'a ekle + 12 ay önden yaz
+      result = await supabase
+        .from("recurring_transactions")
+        .insert(payload)
+        .select()
+        .single(); // ID'yi almak icin
+
+      if (!result.error && result.data) {
+        const newRecordId = result.data.id; // Gerçek ID
+
         // Gelecek 12 ay için transactions tablosuna bulk insert
-        const groupId = crypto.randomUUID();
         const today = new Date();
         const dayOfMonth =
           formData.frequency === "monthly"
@@ -192,7 +234,7 @@ export default function RecurringTransactions() {
           description: formData.description.trim()
             ? `${formData.description.trim()} (otomatik)`
             : "Otomatik tekrarlayan işlem",
-          group_id: groupId,
+          group_id: newRecordId, // UUID yerine gercek ID'yi bagla
           payment_method:
             formData.type === "expense" ? formData.payment_method : "cash",
         }));
@@ -228,14 +270,22 @@ export default function RecurringTransactions() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+
+    // Önce kalıt olan kopyaları sil
+    await supabase.from("transactions").delete().eq("group_id", deleteId);
+
+    // Sonra asıl kaydı sil
     const { error } = await supabase
       .from("recurring_transactions")
       .delete()
       .eq("id", deleteId);
+
     if (!error) {
       setSuccess("İşlem silindi.");
       setTimeout(() => setSuccess(""), 3000);
       fetchData();
+    } else {
+      setError("Silinirken hata oluştu.");
     }
     setDeleteId(null);
   };
