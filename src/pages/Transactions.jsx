@@ -30,6 +30,7 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
+  CreditCard,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -81,6 +82,7 @@ const EMPTY_FORM = {
   description: "",
   isInstallment: false,
   installmentCount: 3,
+  is_transfer: false,
 };
 
 /**
@@ -302,6 +304,7 @@ export default function Transactions() {
         description: baseDesc
           ? `${baseDesc} (${i + 1}/${count})`
           : `(${i + 1}/${count})`,
+        is_transfer: formData.is_transfer,
       }));
 
       const { error } = await supabase.from("transactions").insert(rows);
@@ -323,6 +326,7 @@ export default function Transactions() {
         type: formData.type,
         category_id: formData.category_id || null,
         description: formData.description.trim() || null,
+        is_transfer: formData.is_transfer,
       });
 
       if (error) {
@@ -357,6 +361,7 @@ export default function Transactions() {
       type: tx.type,
       category_id: tx.category_id || "",
       description: tx.description || "",
+      is_transfer: tx.is_transfer || false,
     });
   };
 
@@ -378,6 +383,7 @@ export default function Transactions() {
         type: editData.type,
         category_id: editData.category_id || null,
         description: editData.description.trim() || null,
+        is_transfer: editData.is_transfer,
       })
       .eq("id", editingId);
 
@@ -458,7 +464,7 @@ export default function Transactions() {
       .filter((t) => t.type === "income")
       .reduce((sum, t) => sum + Number(t.amount), 0);
     const expense = transactions
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "expense" && !t.is_transfer)
       .reduce((sum, t) => sum + Number(t.amount), 0);
     return { income, expense, net: income - expense };
   }, [transactions]);
@@ -667,6 +673,31 @@ export default function Transactions() {
                 </div>
               )}
             </div>
+
+            {/* ── KREDİ KARTI / BORÇ ÖDEMESİ ──
+                Sadece "Gider" seçiliyken görünür.
+                İşaretlenirse toplam gider hesabından hariç tutulur. */}
+            {formData.type === "expense" && (
+              <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1 animate-fade-in">
+                <input
+                  type="checkbox"
+                  id="txIsTransfer"
+                  checked={formData.is_transfer}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      is_transfer: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-primary-500" />
+                  Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
+                  tut)
+                </span>
+              </label>
+            )}
 
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>
@@ -979,6 +1010,26 @@ export default function Transactions() {
                 }
                 placeholder="İşlem açıklaması..."
               />
+              {editData.type === "expense" && (
+                <label className="flex items-center gap-2.5 cursor-pointer select-none animate-fade-in">
+                  <input
+                    type="checkbox"
+                    checked={editData.is_transfer}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        is_transfer: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-primary-500" />
+                    Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
+                    tut)
+                  </span>
+                </label>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={cancelEdit} disabled={saving}>
                   İptal
@@ -1082,20 +1133,28 @@ export default function Transactions() {
                       {formatDate(tx.date)}
                     </td>
                     <td className="px-6 py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          tx.type === "income"
-                            ? "bg-success-50 text-success-700"
-                            : "bg-danger-50 text-danger-700"
-                        }`}
-                      >
-                        {tx.type === "income" ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                            tx.type === "income"
+                              ? "bg-success-50 text-success-700"
+                              : "bg-danger-50 text-danger-700"
+                          }`}
+                        >
+                          {tx.type === "income" ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3" />
+                          )}
+                          {tx.type === "income" ? "Gelir" : "Gider"}
+                        </span>
+                        {tx.is_transfer && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary-50 text-primary-700">
+                            <CreditCard className="w-3 h-3" />
+                            Transfer
+                          </span>
                         )}
-                        {tx.type === "income" ? "Gelir" : "Gider"}
-                      </span>
+                      </div>
                     </td>
                     <td className="px-6 py-3.5 text-text-secondary">
                       {tx.categories?.name || "—"}

@@ -27,6 +27,7 @@ import {
   X,
   RefreshCw,
   Pencil,
+  CreditCard,
 } from "lucide-react";
 
 // MONTH_NAMES artık salaryCycle.js içinde — burada kullanılmıyor.
@@ -172,7 +173,7 @@ export default function Dashboard() {
       .filter((t) => t.type === "income")
       .reduce((sum, t) => sum + Number(t.amount), 0);
     const expense = transactions
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "expense" && !t.is_transfer)
       .reduce((sum, t) => sum + Number(t.amount), 0);
     return { income, expense, net: income - expense };
   }, [transactions]);
@@ -184,14 +185,16 @@ export default function Dashboard() {
 
   const categoryBreakdown = useMemo(() => {
     const map = {};
-    transactions.forEach((tx) => {
-      const catName = tx.categories?.name || "Kategorisiz";
-      const key = `${catName}-${tx.type}`;
-      if (!map[key]) {
-        map[key] = { name: catName, type: tx.type, total: 0 };
-      }
-      map[key].total += Number(tx.amount);
-    });
+    transactions
+      .filter((tx) => !tx.is_transfer)
+      .forEach((tx) => {
+        const catName = tx.categories?.name || "Kategorisiz";
+        const key = `${catName}-${tx.type}`;
+        if (!map[key]) {
+          map[key] = { name: catName, type: tx.type, total: 0 };
+        }
+        map[key].total += Number(tx.amount);
+      });
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [transactions]);
 
@@ -550,8 +553,11 @@ export default function Dashboard() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-text-primary truncate">
+                          <p className="text-sm font-medium text-text-primary truncate flex items-center gap-1.5">
                             {tx.categories?.name || "Kategorisiz"}
+                            {tx.is_transfer && (
+                              <CreditCard className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                            )}
                           </p>
                           <p className="text-xs text-text-muted truncate">
                             {tx.description ||

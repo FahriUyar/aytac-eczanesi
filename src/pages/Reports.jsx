@@ -138,7 +138,7 @@ export default function Reports() {
       const m = new Date(tx.date).getMonth();
       const amount = Number(tx.amount);
       if (tx.type === "income") months[m].income += amount;
-      else months[m].expense += amount;
+      else if (!tx.is_transfer) months[m].expense += amount;
     });
 
     return months;
@@ -215,29 +215,31 @@ export default function Reports() {
     const currentCategoryMap = {};
     const prevMonth = compareMonth === 0 ? 11 : compareMonth - 1;
 
-    yearlyData.forEach((tx) => {
-      const txMonth = new Date(tx.date).getMonth();
-      const catName = tx.categories?.name || "Kategorisiz";
+    yearlyData
+      .filter((tx) => !tx.is_transfer)
+      .forEach((tx) => {
+        const txMonth = new Date(tx.date).getMonth();
+        const catName = tx.categories?.name || "Kategorisiz";
 
-      if (txMonth === compareMonth) {
-        if (!currentCategoryMap[catName])
-          currentCategoryMap[catName] = {
-            current: 0,
-            previous: 0,
-            type: tx.type,
-          };
-        currentCategoryMap[catName].current += Number(tx.amount);
-      }
-      if (txMonth === prevMonth) {
-        if (!currentCategoryMap[catName])
-          currentCategoryMap[catName] = {
-            current: 0,
-            previous: 0,
-            type: tx.type,
-          };
-        currentCategoryMap[catName].previous += Number(tx.amount);
-      }
-    });
+        if (txMonth === compareMonth) {
+          if (!currentCategoryMap[catName])
+            currentCategoryMap[catName] = {
+              current: 0,
+              previous: 0,
+              type: tx.type,
+            };
+          currentCategoryMap[catName].current += Number(tx.amount);
+        }
+        if (txMonth === prevMonth) {
+          if (!currentCategoryMap[catName])
+            currentCategoryMap[catName] = {
+              current: 0,
+              previous: 0,
+              type: tx.type,
+            };
+          currentCategoryMap[catName].previous += Number(tx.amount);
+        }
+      });
 
     const categoryComparison = Object.entries(currentCategoryMap)
       .map(([name, data]) => ({
