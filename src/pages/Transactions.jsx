@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { exportTransactionsToExcel } from "../utils/exportExcel";
+import { useAuth } from "../hooks/useAuth";
 import { useProfile } from "../hooks/useProfile";
 import { exportTransactionsToGoogleSheets } from "../utils/exportGoogleSheets";
 import Card from "../components/ui/Card";
