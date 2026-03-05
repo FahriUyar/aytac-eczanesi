@@ -10,7 +10,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
  * Böylece UX daha akıcı ve tek bir bileşenle yönetilebilir.
  */
 
-const INVITE_CODE = "FAHRI_VIP_2026";
+const INVITE_CODE = "BİLANÇO_TAKİP_2026";
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState("login"); // "login" | "register"
