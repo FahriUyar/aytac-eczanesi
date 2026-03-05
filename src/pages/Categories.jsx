@@ -28,6 +28,7 @@ export default function Categories() {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState("");
+  const [isSubcategory, setIsSubcategory] = useState(false);
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -82,6 +83,7 @@ export default function Categories() {
     } else {
       setName("");
       setType("");
+      setIsSubcategory(false);
       setParentId("");
       fetchCategories();
     }
@@ -150,37 +152,46 @@ export default function Categories() {
       <li
         key={cat.id}
         className={`flex items-center justify-between px-4 py-2.5 rounded-xl border group transition-all ${
-          cat.isChild ? `${childBgClass} ml-6` : bgClass
+          cat.isChild ? `${childBgClass} ml-8` : bgClass
         }`}
       >
         <span
-          className={`text-sm font-medium text-text-primary flex items-center gap-2 ${
-            cat.isChild ? "text-text-secondary" : ""
+          className={`text-sm flex items-center gap-2 ${
+            cat.isChild
+              ? "text-text-secondary font-medium"
+              : "text-text-primary font-bold"
           }`}
         >
           {cat.isChild && (
-            <CornerDownRight className="w-3.5 h-3.5 text-text-muted shrink-0" />
+            <CornerDownRight className="w-4 h-4 text-text-muted shrink-0" />
           )}
           {cat.name}
         </span>
         {deleteConfirm === cat.id ? (
-          <div className="flex items-center gap-2 animate-fade-in">
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => handleDelete(cat.id)}
-            >
-              {!cat.isChild && categories.some((c) => c.parent_id === cat.id)
-                ? "Alt kategorilerle birlikte sil"
-                : "Sil"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteConfirm(null)}
-            >
-              İptal
-            </Button>
+          <div className="flex flex-col items-end gap-2 animate-fade-in pl-4">
+            {!cat.isChild && categories.some((c) => c.parent_id === cat.id) && (
+              <span className="text-xs text-danger-600 font-medium text-right mb-1">
+                Dikkat: Bu ana kategoriyi silerseniz altındaki{" "}
+                {categories.filter((c) => c.parent_id === cat.id).length} adet
+                alt kategori de silinecektir.
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleDelete(cat.id)}
+              >
+                Sil
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                İptal
+              </Button>
+            </div>
           </div>
         ) : (
           <button
@@ -245,17 +256,38 @@ export default function Categories() {
             </Button>
           </div>
 
-          {/* Ana kategori seçimi — sadece ilgili tür seçildiyse ve ana kategori varsa göster */}
+          {/* Alt Kategori Checkbox */}
           {type && parentOptions.length > 0 && (
-            <div className="animate-fade-in">
-              <Select
-                label="Ana Kategori (opsiyonel — boş bırakırsan ana kategori olur)"
-                id="parentCategory"
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-                options={parentOptions}
-                placeholder="Ana kategori (yok — kendisi ana)"
-              />
+            <div className="flex flex-col gap-3 pt-2 animate-fade-in">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isSubcategory}
+                  onChange={(e) => {
+                    setIsSubcategory(e.target.checked);
+                    if (!e.target.checked) setParentId("");
+                  }}
+                  className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-text-secondary">
+                  Bu bir alt kategori mi?
+                </span>
+              </label>
+
+              {/* Ana Kategori Seçimi — sadece checkbox işaretliyse açık */}
+              {isSubcategory && (
+                <div className="animate-fade-in pl-6 border-l-2 border-primary-100">
+                  <Select
+                    label="Hangi ana kategoriye ait olacak?"
+                    id="parentCategory"
+                    value={parentId}
+                    onChange={(e) => setParentId(e.target.value)}
+                    options={parentOptions}
+                    placeholder="Ana kategori seçin"
+                    required={isSubcategory}
+                  />
+                </div>
+              )}
             </div>
           )}
         </form>
