@@ -93,6 +93,8 @@ const formatPercent = (value) => {
 export default function Reports() {
   // Görev 1: Kapıdaki kişiyi öğren
   const { user } = useAuth();
+  const now = new Date();
+  
   // Date Range state
   const getFirstDayOfMonth = () => {
     const d = new Date();
