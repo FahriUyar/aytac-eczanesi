@@ -109,9 +109,53 @@ export default function Reports() {
 
   const [startDate, setStartDate] = useState(getFirstDayOfMonth());
   const [endDate, setEndDate] = useState(getLastDayOfMonth());
+  const [activeQuickSelect, setActiveQuickSelect] = useState("thisMonth");
   const [yearlyData, setYearlyData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Quick Select Logic
+  const handleQuickSelect = (range) => {
+    setActiveQuickSelect(range);
+    const d = new Date();
+    let startStr = "";
+    let endStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; // Today by default for end
+
+    switch (range) {
+      case "thisMonth":
+        startStr = getFirstDayOfMonth();
+        endStr = getLastDayOfMonth();
+        break;
+      case "last3Months": {
+        const past = new Date();
+        past.setMonth(past.getMonth() - 3);
+        startStr = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, "0")}-${String(past.getDate()).padStart(2, "0")}`;
+        break;
+      }
+      case "last6Months": {
+        const past = new Date();
+        past.setMonth(past.getMonth() - 6);
+        startStr = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, "0")}-${String(past.getDate()).padStart(2, "0")}`;
+        break;
+      }
+      case "thisYear":
+        startStr = `${d.getFullYear()}-01-01`;
+        endStr = `${d.getFullYear()}-12-31`; // End of this year
+        break;
+      default:
+        break;
+    }
+
+    if (startStr) setStartDate(startStr);
+    if (endStr) setEndDate(endStr);
+  };
+
+  // Manual Date Change resets quick select
+  const handleManualDateChange = (type, val) => {
+    setActiveQuickSelect("");
+    if (type === "start") setStartDate(val);
+    if (type === "end") setEndDate(val);
+  };
 
   // Category trend
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -440,6 +484,28 @@ export default function Reports() {
               SECTION 1: YEARLY OVERVIEW
           ═══════════════════════════════════════════ */}
           <div className="space-y-4">
+            {/* Quick Filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {[
+                { id: "thisMonth", label: "Bu Ay" },
+                { id: "last3Months", label: "Son 3 Ay" },
+                { id: "last6Months", label: "Son 6 Ay" },
+                { id: "thisYear", label: "Bu Yıl" }
+              ].map(fast => (
+                <button
+                  key={fast.id}
+                  onClick={() => handleQuickSelect(fast.id)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors cursor-pointer ${
+                    activeQuickSelect === fast.id 
+                      ? "bg-primary-50 text-primary-700 border-primary-200" 
+                      : "bg-white text-text-secondary border-border hover:bg-gray-50"
+                  }`}
+                >
+                  {fast.label}
+                </button>
+              ))}
+            </div>
+
             {/* Date Range Selector */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-text-primary">
@@ -448,13 +514,13 @@ export default function Reports() {
               <div className="flex items-center gap-3">
                 <DatePicker
                   value={startDate}
-                  onChange={setStartDate}
+                  onChange={(val) => handleManualDateChange("start", val)}
                   className="w-[140px] sm:w-[160px] py-2 text-sm"
                 />
                 <span className="text-text-muted">-</span>
                 <DatePicker
                   value={endDate}
-                  onChange={setEndDate}
+                  onChange={(val) => handleManualDateChange("end", val)}
                   className="w-[140px] sm:w-[160px] py-2 text-sm"
                 />
               </div>
