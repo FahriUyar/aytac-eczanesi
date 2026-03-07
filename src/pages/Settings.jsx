@@ -7,6 +7,8 @@ import {
   Check,
   CalendarDays,
   Type,
+  Building2,
+  Wallet,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 
@@ -21,10 +23,11 @@ import Card from "../components/ui/Card";
  */
 
 export default function Settings() {
-  const { appName, salaryDay, saveProfile } = useProfile();
+  const { appName, salaryDay, accountType, saveProfile } = useProfile();
 
   const [formName, setFormName] = useState("");
   const [formSalaryDay, setFormSalaryDay] = useState(1);
+  const [formAccountType, setFormAccountType] = useState("personal");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +36,8 @@ export default function Settings() {
   useEffect(() => {
     if (appName) setFormName(appName);
     if (salaryDay) setFormSalaryDay(salaryDay);
-  }, [appName, salaryDay]);
+    if (accountType) setFormAccountType(accountType);
+  }, [appName, salaryDay, accountType]);
 
   const handleSalaryDayChange = (e) => {
     const val = e.target.value;
@@ -59,6 +63,7 @@ export default function Settings() {
       await saveProfile({
         appName: formName,
         salaryDay: Number(formSalaryDay) || 1,
+        accountType: formAccountType,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -147,6 +152,73 @@ export default function Settings() {
               Dashboard'daki dönem hesabı bu güne göre yapılır. (1 = ayın başı,
               15 = ayın ortası, vb.)
             </p>
+          </div>
+
+          {/* Hesap Türü */}
+          <div className="space-y-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
+              <Wallet className="w-4 h-4 text-primary-500" />
+              Hesap Türü / Görünüm Modu
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Bireysel Option */}
+              <label
+                className={`relative flex flex-col p-4 cursor-pointer rounded-xl border-2 transition-all ${
+                  formAccountType === "personal"
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-border bg-white hover:border-primary-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`font-semibold ${formAccountType === "personal" ? "text-primary-700" : "text-text-primary"}`}>
+                    Bireysel
+                  </span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formAccountType === "personal" ? "border-primary-500" : "border-gray-300"}`}>
+                    {formAccountType === "personal" && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
+                  </div>
+                </div>
+                <p className="text-xs text-text-muted mt-1">
+                  Nakit ve kredi kartı borcunuzu ayrı ayrı takip edin.
+                </p>
+                <input
+                  type="radio"
+                  name="accountType"
+                  value="personal"
+                  checked={formAccountType === "personal"}
+                  onChange={(e) => setFormAccountType(e.target.value)}
+                  className="sr-only"
+                />
+              </label>
+
+              {/* İşletme Option */}
+              <label
+                className={`relative flex flex-col p-4 cursor-pointer rounded-xl border-2 transition-all ${
+                  formAccountType === "business"
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-border bg-white hover:border-primary-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`font-semibold ${formAccountType === "business" ? "text-primary-700" : "text-text-primary"}`}>
+                    İşletme
+                  </span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formAccountType === "business" ? "border-primary-500" : "border-gray-300"}`}>
+                    {formAccountType === "business" && <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />}
+                  </div>
+                </div>
+                <p className="text-xs text-text-muted mt-1">
+                  Sadece toplam gelir ve giderlerinizi içeren sade görünüm.
+                </p>
+                <input
+                  type="radio"
+                  name="accountType"
+                  value="business"
+                  checked={formAccountType === "business"}
+                  onChange={(e) => setFormAccountType(e.target.value)}
+                  className="sr-only"
+                />
+              </label>
+            </div>
           </div>
 
           {/* Kaydet */}

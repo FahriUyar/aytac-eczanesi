@@ -28,6 +28,7 @@ export function ProfileProvider({ children }) {
   const userId = user?.id;
   const [appName, setAppName] = useState(null);
   const [salaryDay, setSalaryDay] = useState(1);
+  const [accountType, setAccountType] = useState("personal");
   const [profileLoading, setProfileLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
@@ -36,6 +37,7 @@ export function ProfileProvider({ children }) {
     if (!userId) {
       setAppName(null);
       setSalaryDay(1);
+      setAccountType("personal");
       setProfileLoading(false);
       setNeedsOnboarding(false);
       return;
@@ -48,7 +50,7 @@ export function ProfileProvider({ children }) {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("app_name, salary_day")
+          .select("app_name, salary_day, account_type")
           .eq("id", userId)
           .maybeSingle();
 
@@ -62,6 +64,7 @@ export function ProfileProvider({ children }) {
         } else {
           setAppName(data.app_name);
           setSalaryDay(data.salary_day ?? 1);
+          setAccountType(data.account_type || "personal");
           setNeedsOnboarding(false);
         }
       } catch (err) {
@@ -84,12 +87,13 @@ export function ProfileProvider({ children }) {
    * Hem onboarding hem ayarlar sayfasından çağrılır.
    */
   const saveProfile = useCallback(
-    async ({ appName: name, salaryDay: day }) => {
+    async ({ appName: name, salaryDay: day, accountType: type }) => {
       if (!userId) return;
 
       const payload = { id: userId };
       if (name !== undefined) payload.app_name = name.trim();
       if (day !== undefined) payload.salary_day = Number(day);
+      if (type !== undefined) payload.account_type = type;
 
       const { error } = await supabase
         .from("profiles")
@@ -99,6 +103,7 @@ export function ProfileProvider({ children }) {
 
       if (name !== undefined) setAppName(name.trim());
       if (day !== undefined) setSalaryDay(Number(day));
+      if (type !== undefined) setAccountType(type);
       setNeedsOnboarding(false);
     },
     [userId],
@@ -109,6 +114,7 @@ export function ProfileProvider({ children }) {
       value={{
         appName,
         salaryDay,
+        accountType,
         profileLoading,
         needsOnboarding,
         saveProfile,
