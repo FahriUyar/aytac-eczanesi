@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import Card from "../components/ui/Card";
 import Select from "../components/ui/Select";
+import DatePicker from "../components/ui/DatePicker";
 import {
   BarChart3,
   TrendingUp,
@@ -92,8 +93,20 @@ const formatPercent = (value) => {
 export default function Reports() {
   // Görev 1: Kapıdaki kişiyi öğren
   const { user } = useAuth();
-  const now = new Date();
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  // Date Range state
+  const getFirstDayOfMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  };
+  
+  const getLastDayOfMonth = () => {
+    const d = new Date();
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
+  };
+
+  const [startDate, setStartDate] = useState(getFirstDayOfMonth());
+  const [endDate, setEndDate] = useState(getLastDayOfMonth());
   const [yearlyData, setYearlyData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,7 +129,7 @@ export default function Reports() {
 
   useEffect(() => {
     fetchYearlyData();
-  }, [selectedYear]);
+  }, [startDate, endDate]);
 
   const fetchCategories = async () => {
     // Görev 2: Sadece bu kullanıcıya ait kategorileri çek
@@ -129,17 +142,16 @@ export default function Reports() {
   };
 
   const fetchYearlyData = async () => {
+    if (!startDate || !endDate) return;
     setLoading(true);
-    const startDate = `${selectedYear}-01-01`;
-    const endDate = `${selectedYear + 1}-01-01`;
 
-    // Görev 2: Sadece bu kullanıcıya ait yıllık verileri çek
+    // Görev 2: Sadece bu kullanıcıya ait ve seçili tarih aralığındaki verileri çek
     const { data, error } = await supabase
       .from("transactions")
       .select("*, categories(name, parent_id)")
       .eq("user_id", user.id)
       .gte("date", startDate)
-      .lt("date", endDate)
+      .lte("date", endDate)
       .order("date", { ascending: true });
 
     if (error) {
@@ -426,28 +438,24 @@ export default function Reports() {
               SECTION 1: YEARLY OVERVIEW
           ═══════════════════════════════════════════ */}
           <div className="space-y-4">
-            {/* Year Selector */}
-            <div className="flex items-center justify-between">
+            {/* Date Range Selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-text-primary">
-                Yıllık Özet
+                Genel Özet
               </h2>
-              <Card padding="p-2" className="flex items-center gap-1">
-                <button
-                  onClick={() => setSelectedYear((y) => y - 1)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-3 font-semibold text-text-primary min-w-[60px] text-center">
-                  {selectedYear}
-                </span>
-                <button
-                  onClick={() => setSelectedYear((y) => y + 1)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary cursor-pointer"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </Card>
+              <div className="flex items-center gap-3">
+                <DatePicker
+                  value={startDate}
+                  onChange={setStartDate}
+                  className="w-[140px] sm:w-[160px] py-2 text-sm"
+                />
+                <span className="text-text-muted">-</span>
+                <DatePicker
+                  value={endDate}
+                  onChange={setEndDate}
+                  className="w-[140px] sm:w-[160px] py-2 text-sm"
+                />
+              </div>
             </div>
 
             {/* Yearly Summary Cards */}
@@ -458,7 +466,7 @@ export default function Reports() {
                     <TrendingUp className="w-4 h-4 text-success-600" />
                   </div>
                   <span className="text-sm text-text-secondary">
-                    Yıllık Gelir
+                    Toplam Gelir
                   </span>
                 </div>
                 <p className="text-xl font-bold text-success-700">
@@ -471,7 +479,7 @@ export default function Reports() {
                     <TrendingDown className="w-4 h-4 text-danger-600" />
                   </div>
                   <span className="text-sm text-text-secondary">
-                    Yıllık Gider
+                    Toplam Gider
                   </span>
                 </div>
                 <p className="text-xl font-bold text-danger-700">
@@ -498,7 +506,7 @@ export default function Reports() {
                     />
                   </div>
                   <span className="text-sm text-text-secondary">
-                    Yıllık Net
+                    Net Durum
                   </span>
                 </div>
                 <p
@@ -667,13 +675,19 @@ export default function Reports() {
           ═══════════════════════════════════════════ */}
           <div className="grid lg:grid-cols-2 gap-6 pb-2">
             <Card>
-              <h3 className="text-lg font-semibold text-text-primary mb-4">
-                Ana Kategori Gider Dağılımı ({selectedYear})
-              </h3>
+              <div className="flex flex-col mb-4">
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Ana Kategori Gider Dağılımı (Seçili Dönem)
+                </h3>
+                <p className="text-sm text-text-secondary">
+                  Detayları görmek için bir dilime tıklayın.
+                </p>
+              </div>
+              
               {expenseChartData.length === 0 ? (
                 <div className="text-center py-8 text-text-muted">
                   <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Bu yıla ait gider verisi bulunamadı.</p>
+                  <p className="text-sm">Seçili döneme ait gider verisi bulunamadı.</p>
                 </div>
               ) : (
                 <>
@@ -682,10 +696,10 @@ export default function Reports() {
                       <PieChart>
                         <Pie
                           data={expenseChartData}
-                          cx="50%"
+                          cx="45%"
                           cy="50%"
-                          innerRadius={75}
-                          outerRadius={105}
+                          innerRadius={70}
+                          outerRadius={100}
                           paddingAngle={3}
                           dataKey="value"
                           onClick={handlePieClick}
@@ -707,19 +721,18 @@ export default function Reports() {
                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                         />
                         <Legend 
-                           verticalAlign="bottom" 
-                           height={36} 
+                           layout="vertical"
+                           verticalAlign="middle" 
+                           align="right"
+                           wrapperStyle={{ paddingLeft: '10px' }}
                            iconType="circle"
                            formatter={(value, entry) => (
-                             <span className="text-sm font-medium text-text-secondary">{value}</span>
+                             <span className="text-sm font-medium text-text-secondary whitespace-nowrap">{value}</span>
                            )}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <p className="text-xs text-center text-text-muted mt-2">
-                    Detayları görmek için bir dilime tıklayın.
-                  </p>
                 </>
               )}
             </Card>
