@@ -1,95 +1,168 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 /**
- * İşlemleri Excel dosyasına aktarır.
- * Sütun genişlikleri otomatik ayarlanır, başlıklar kalın yazılır,
- * alt satırda toplam özeti gösterilir.
+ * İşlemleri Excel dosyasına (XLSX) aktarır.
+ * ExcelJS kullanılarak daha profesyonel bir UI, çoklu sekme (İşlem Geçmişi, Rapor Özeti)
+ * ve özel sütun biçimlendirmeleri (kalın, arkaplan, para birimi) sağlar.
  */
-export function exportTransactionsToExcel(
+export async function exportTransactionsToExcel(
   transactions,
   monthName,
   year,
   appName = "Rapor",
 ) {
-  // Başlık satırı
-  const headers = ["Tarih", "Tür", "Kategori", "Açıklama", "Tutar (₺)"];
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = appName;
+  workbook.created = new Date();
 
-  // Veri satırları
-  const rows = transactions.map((tx) => {
-    const date = new Date(tx.date).toLocaleDateString("tr-TR", {
+  // ─────────────────────────────────────────────────────────────────
+  // SEKME 1: İşlem Geçmişi
+  // ─────────────────────────────────────────────────────────────────
+  const historySheet = workbook.addWorksheet("İşlem Geçmişi");
+
+  // Sütun yapılandırması
+  historySheet.columns = [
+    { header: "Tarih", key: "date", width: 15 },
+    { header: "Tür", key: "type", width: 10 },
+    { header: "Kategori", key: "category", width: 25 },
+    { header: "Açıklama", key: "description", width: 35 },
+    { header: "Tutar", key: "amount", width: 15 },
+  ];
+
+  // Başlık (Header) satırı stili
+  const headerRow = historySheet.getRow(1);
+  headerRow.font = { name: "Arial", size: 12, bold: true };
+  headerRow.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3F4F6" }, 
+  };
+  headerRow.alignment = { vertical: "middle", horizontal: "center" };
+
+  // İşlem verilerini ekleme
+  transactions.forEach((tx) => {
+    const dateStr = new Date(tx.date).toLocaleDateString("tr-TR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
-    const type = tx.type === "income" ? "Gelir" : "Gider";
-    const category = tx.categories?.name || "—";
-    const description = tx.description || "—";
-    const amount = Number(tx.amount);
+    const typeLabel = tx.type === "income" ? "Gelir" : "Gider";
+    const catLabel = tx.categories?.name || "—";
+    const desc = tx.description || "—";
+    const amountVal = Number(tx.amount);
 
-    return [date, type, category, description, amount];
+    const row = historySheet.addRow({
+      date: dateStr,
+      type: typeLabel,
+      category: catLabel,
+      description: desc,
+      amount: amountVal,
+    });
+
+    // Tutar hücresi TL formatı (Sütun 5)
+    row.getCell(5).numFmt = '#,##0.00" ₺"';
   });
 
-  // Toplam hesaplamaları
-  const totalIncome = transactions
-    .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-  const totalExpense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  // ─────────────────────────────────────────────────────────────────
+  // DEĞERLERİ HESAPLA (Rapor Özeti için)
+  // ─────────────────────────────────────────────────────────────────
+  let totalIncome = 0;
+  let totalExpense = 0;
+  const categoryTotals = {};
+
+  transactions.forEach((tx) => {
+    const amountVal = Number(tx.amount);
+    if (tx.type === "income") {
+      totalIncome += amountVal;
+    } else if (tx.type === "expense") {
+      // Sadece giderleri kategorilere göre grupla (is_transfer hariç diyebiliriz ama
+      // basitlik adına gelen tüm işlemleri sayıyoruz, kullanıcı isteğine göre genişletilebilir)
+      if (!tx.is_transfer) {
+        totalExpense += amountVal;
+        
+        let parentId;
+        let parentName;
+        if (tx.categories) {
+          if (tx.categories.parent_id) {
+            parentId = tx.categories.parent_id;
+            parentName = "Alt Kategori (Ana kategori hesaplanmalı)"; 
+            // Eğer elimizde tüm kategoriler listesi yoksa elimizdeki veriye göre gruplarız
+            parentName = tx.categories.name; 
+          } else {
+            parentId = tx.categories.id;
+            parentName = tx.categories.name;
+          }
+        } else {
+          parentId = "uncategorized";
+          parentName = "Kategorisiz";
+        }
+        
+        if (!categoryTotals[parentId]) {
+          categoryTotals[parentId] = { name: parentName, total: 0 };
+        }
+        categoryTotals[parentId].total += amountVal;
+      }
+    }
+  });
+
   const net = totalIncome - totalExpense;
 
-  // Boş satır + özet satırları
-  const summaryRows = [
-    [], // boş satır
-    ["", "", "", "Toplam Gelir", totalIncome],
-    ["", "", "", "Toplam Gider", totalExpense],
-    ["", "", "", "Net Durum", net],
+  // ─────────────────────────────────────────────────────────────────
+  // SEKME 2: Rapor Özeti
+  // ─────────────────────────────────────────────────────────────────
+  const summarySheet = workbook.addWorksheet("Rapor Özeti");
+
+  summarySheet.columns = [
+    { header: "Özet Kalemi", key: "item", width: 25 },
+    { header: "Tutar", key: "amount", width: 20 },
   ];
 
-  // Tüm veriyi birleştir
-  const sheetData = [headers, ...rows, ...summaryRows];
+  const summaryHeader = summarySheet.getRow(1);
+  summaryHeader.font = { name: "Arial", size: 12, bold: true };
+  summaryHeader.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF3F4F6" },
+  };
+  summaryHeader.alignment = { vertical: "middle", horizontal: "left" };
 
-  // Worksheet oluştur
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  // Ana Toplamlar
+  summarySheet.addRow({ item: "Toplam Gelir", amount: totalIncome });
+  summarySheet.addRow({ item: "Toplam Gider", amount: totalExpense });
+  summarySheet.addRow({ item: "Net Durum", amount: net });
+  
+  // Boş Satır
+  summarySheet.addRow({});
+  
+  // Ana Kategori Gider Dağılımı Başlığı
+  const catHeaderRow = summarySheet.addRow({ item: "Ana Kategori Gider Dağılımı", amount: "" });
+  catHeaderRow.font = { name: "Arial", size: 11, bold: true };
+  catHeaderRow.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFEEEEEE" },
+  };
 
-  // Sütun genişliklerini otomatik hesapla
-  const colWidths = headers.map((header, colIdx) => {
-    let maxLen = header.length;
-    rows.forEach((row) => {
-      const cellValue = String(row[colIdx] ?? "");
-      maxLen = Math.max(maxLen, cellValue.length);
+  // Kategorileri ekle ve Tutar sütununu formatla
+  Object.values(categoryTotals)
+    .sort((a, b) => b.total - a.total)
+    .forEach((cat) => {
+      summarySheet.addRow({ item: cat.name, amount: cat.total });
     });
-    // Özet satırlarını da kontrol et
-    summaryRows.forEach((row) => {
-      const cellValue = String(row[colIdx] ?? "");
-      maxLen = Math.max(maxLen, cellValue.length);
-    });
-    // Biraz ekstra boşluk ekle
-    return { wch: Math.min(maxLen + 4, 40) };
+
+  // Tutar sütununu (B sütunu) formatla
+  summarySheet.getColumn("amount").eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+    if (rowNumber > 1 && typeof cell.value === "number") {
+      cell.numFmt = '#,##0.00" ₺"';
+    }
   });
-  ws["!cols"] = colWidths;
 
-  // Tutar sütunundaki sayıları formatlama (Türk Lirası formatı)
-  const amountColIdx = 4; // E sütunu
-  for (let rowIdx = 1; rowIdx <= rows.length; rowIdx++) {
-    const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: amountColIdx });
-    if (ws[cellRef]) {
-      ws[cellRef].z = '#,##0.00 "₺"';
-    }
-  }
-  // Özet satırlarındaki tutarları da formatla
-  const summaryStartRow = rows.length + 2; // +1 header, +1 boş satır
-  for (let i = 0; i < 3; i++) {
-    const cellRef = XLSX.utils.encode_cell({
-      r: summaryStartRow + i,
-      c: amountColIdx,
-    });
-    if (ws[cellRef]) {
-      ws[cellRef].z = '#,##0.00 "₺"';
-    }
-  }
-
-  // Dosya Adı Formatlama (İşletim Sistemi Uyumluluğu)
+  // ─────────────────────────────────────────────────────────────────
+  // DOSYAYI OLUŞTUR VE İNDİR
+  // ─────────────────────────────────────────────────────────────────
+  
+  // Dosya Adı Formatlama
   const formatFileName = (str) => {
     return String(str || "")
       .replace(/ğ/g, "g")
@@ -109,14 +182,17 @@ export function exportTransactionsToExcel(
       .replace(/\s+/g, "_");
   };
 
-  const safeAppName = formatFileName(appName) || "Bilanço_Raporu";
+  const safeAppName = formatFileName(appName) || "Bilanco_Raporu";
   const safeMonthName = formatFileName(monthName);
+  
+  // İstenen Format: Bilanco_Raporu_[Tarih].xlsx
+  const today = new Date();
+  const dateSuffix = `${String(today.getDate()).padStart(2,"0")}_${String(today.getMonth()+1).padStart(2,"0")}_${today.getFullYear()}`;
+  
+  const fileName = `Bilanco_Raporu_${dateSuffix}.xlsx`;
 
-  // Workbook oluştur
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `${safeMonthName} ${year}`);
-
-  // Dosyayı indir
-  const fileName = `${safeAppName}_${safeMonthName}_${year}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+  // ArrayBuffer olarak alıp kaydet
+  const buffer = await workbook.xlsx.writeBuffer();
+  const fileBlob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  saveAs(fileBlob, fileName);
 }
