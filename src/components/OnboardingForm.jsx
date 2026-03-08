@@ -3,21 +3,23 @@ import { useProfile } from "../hooks/useProfile";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
 import { defaultCategories } from "../lib/constants";
-import { BarChart3, Loader2, Sparkles, CalendarDays, Type, Wallet, DownloadCloud, Info } from "lucide-react";
-
-/**
- * OnboardingForm
- *
- * Neden iki soru?
- * 1) app_name — Header'da gösterilecek kişisel isim
- * 2) salary_day — Maaş döngüsü için başlangıç günü
- * Her ikisi de profiles tablosuna tek upsert ile kaydedilir.
- */
+import { 
+  BarChart3, 
+  Loader2, 
+  Sparkles, 
+  CalendarDays, 
+  Type, 
+  Wallet, 
+  Info,
+  ArrowRight,
+  ArrowLeft
+} from "lucide-react";
 
 export default function OnboardingForm() {
   const { saveProfile } = useProfile();
   const { user } = useAuth();
   
+  const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState("");
   const [salaryDay, setSalaryDay] = useState(1);
   const [accountType, setAccountType] = useState("personal");
@@ -28,7 +30,6 @@ export default function OnboardingForm() {
 
   const handleSalaryDayChange = (e) => {
     const val = e.target.value;
-    // Boş bırakabilsin, ama sadece sayı kabul et
     if (val === "") {
       setSalaryDay("");
       return;
@@ -39,8 +40,21 @@ export default function OnboardingForm() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const nextStep = () => {
+    if (currentStep === 1 && !name.trim()) {
+      setError("Lütfen çalışma alanı adını girin.");
+      return;
+    }
+    setError("");
+    setCurrentStep((p) => p + 1);
+  };
+
+  const prevStep = () => {
+    setError("");
+    setCurrentStep((p) => p - 1);
+  };
+
+  const handleSubmit = async () => {
     if (!name.trim()) return;
 
     const day = Number(salaryDay) || 1;
@@ -95,215 +109,262 @@ export default function OnboardingForm() {
     } catch (err) {
       console.error("Kurulum hatası:", err);
       setError("Kurulum sırasında bir hata oluştu. Lütfen tekrar deneyin.");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-800 to-sidebar p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary-400/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-lg animate-fade-in">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-3xl shadow-lg shadow-primary-600/30 mb-6">
-            <Sparkles className="w-10 h-10 text-white" />
+    <div className="flex min-h-screen bg-white">
+      {/* ─────────────────────────────────────────────────────────
+          LEFT PANE (SPLIT SCREEN BACKGROUND)
+      ────────────────────────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-1/3 bg-primary-900 relative flex-col justify-between p-12 overflow-hidden">
+        {/* Background glow effects */}
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary-400/20 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-12">
+            <BarChart3 className="w-8 h-8 text-primary-400" />
+            <span className="text-xl font-bold text-white tracking-wide">Bilanço</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Hoş Geldiniz! 🎉
+          <h1 className="text-4xl font-extrabold text-white leading-tight mb-6">
+            Finansal kontrolünüzü elinize alın.
           </h1>
-          <p className="text-primary-100/90 text-[15px] max-w-sm mx-auto leading-relaxed">
-            Sisteminizi kurmak için birkaç ufak sorumuz var. Merak etmeyin, bu tercihlerin hepsini daha sonra Ayarlar sayfasından dilediğiniz zaman değiştirebilirsiniz.
+          <p className="text-primary-100/80 text-lg leading-relaxed max-w-sm">
+            Gelir ve giderlerinizi profesyonel bir şekilde takip etmek için sisteminizi saniyeler içinde kurun.
           </p>
         </div>
-
-        {/* Card */}
-        <div className="bg-card rounded-2xl shadow-2xl border border-white/10 p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary-600" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-3">
+              <div className="w-10 h-10 rounded-full bg-primary-700 border-2 border-primary-900 flex items-center justify-center text-white text-xs font-bold">🎯</div>
+              <div className="w-10 h-10 rounded-full bg-primary-600 border-2 border-primary-900 flex items-center justify-center text-white text-xs font-bold">✨</div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">
-                Kurulum
-              </h2>
-              <p className="text-sm text-text-muted">
-                İki kısa adım — hepsi bu kadar
-              </p>
-            </div>
+            <p className="text-sm text-primary-200">Kişiselleştirilmiş deneyim</p>
           </div>
+        </div>
+      </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-danger-50 border border-danger-500/20 text-danger-700 text-sm animate-fade-in">
-              {error}
+      {/* ─────────────────────────────────────────────────────────
+          RIGHT PANE (FORM AREA)
+      ────────────────────────────────────────────────────────── */}
+      <div className="w-full lg:w-2/3 flex flex-col justify-center items-center p-6 sm:p-12 relative overflow-y-auto">
+        
+        {loading ? (
+          /* LOADING UI STATE */
+          <div className="flex flex-col items-center justify-center text-center animate-fade-in w-full max-w-sm">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-primary-100 rounded-full animate-ping opacity-75"></div>
+              <div className="relative w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+              </div>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 1) Uygulama İsmi */}
-            <div className="space-y-2">
-              <label
-                htmlFor="appName"
-                className="flex items-center gap-2 text-sm font-medium text-text-primary"
-              >
-                <Type className="w-4 h-4 text-primary-500" />
-                Uygulama İsmi
-              </label>
-              <input
-                id="appName"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Örn: Ev Bütçem, Eczane Bilançosu"
-                required
-                maxLength={50}
-                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 font-medium"
-              />
-            </div>
-
-            {/* 2) Maaş Günü */}
-            <div className="space-y-2">
-              <label
-                htmlFor="salaryDay"
-                className="flex items-center gap-2 text-sm font-medium text-text-primary"
-              >
-                <CalendarDays className="w-4 h-4 text-primary-500" />
-                Bütçe Başlangıç / Maaş Günü
-              </label>
-              <input
-                id="salaryDay"
-                type="number"
-                min={1}
-                max={31}
-                value={salaryDay}
-                onChange={handleSalaryDayChange}
-                placeholder="Örn: 15"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 font-medium"
-              />
-            </div>
-
-            {/* 3) Hesap Türü */}
-            <div className="space-y-3 pt-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-                <Wallet className="w-4 h-4 text-primary-500" />
-                Hesap Türü / Görünüm Modu
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label
-                  className={`relative flex flex-col p-3 cursor-pointer rounded-xl border-2 transition-all ${
-                    accountType === "personal"
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-border bg-white hover:border-primary-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`font-semibold text-sm ${accountType === "personal" ? "text-primary-700" : "text-text-primary"}`}>
-                      Bireysel
-                    </span>
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${accountType === "personal" ? "border-primary-500" : "border-gray-300"}`}>
-                      {accountType === "personal" && <div className="w-2 h-2 rounded-full bg-primary-500" />}
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-text-muted leading-tight">
-                    Nakit ve kredi kartı borcunuzu ayrı takip edin.
-                  </p>
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="personal"
-                    checked={accountType === "personal"}
-                    onChange={(e) => setAccountType(e.target.value)}
-                    className="sr-only"
-                  />
-                </label>
-
-                <label
-                  className={`relative flex flex-col p-3 cursor-pointer rounded-xl border-2 transition-all ${
-                    accountType === "business"
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-border bg-white hover:border-primary-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`font-semibold text-sm ${accountType === "business" ? "text-primary-700" : "text-text-primary"}`}>
-                      İşletme
-                    </span>
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${accountType === "business" ? "border-primary-500" : "border-gray-300"}`}>
-                      {accountType === "business" && <div className="w-2 h-2 rounded-full bg-primary-500" />}
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-text-muted leading-tight">
-                    Sadece toplam gelir/gider bazlı sade görünüm.
-                  </p>
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="business"
-                    checked={accountType === "business"}
-                    onChange={(e) => setAccountType(e.target.value)}
-                    className="sr-only"
-                  />
-                </label>
+            <h2 className="text-2xl font-bold text-text-primary mb-2">Çalışma alanınız hazırlanıyor...</h2>
+            <p className="text-text-secondary text-sm">Bu işlem sadece birkaç saniye sürecek. Lütfen bekleyin.</p>
+          </div>
+        ) : (
+          /* WIZARD STATES */
+          <div className="w-full max-w-md animate-fade-in">
+            
+            {/* PROGRESS BAR */}
+            <div className="mb-10">
+              <div className="flex justify-between mb-2">
+                {["Karşılama", "Hesap Türü", "Otomasyon"].map((stepText, idx) => (
+                  <span key={idx} className={`text-xs font-semibold ${currentStep >= idx + 1 ? 'text-primary-600' : 'text-text-muted transition-colors duration-500'}`}>
+                    ADIM {idx + 1}
+                  </span>
+                ))}
+              </div>
+              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex">
+                <div 
+                  className="h-full bg-primary-600 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${(currentStep / 3) * 100}%` }}
+                />
               </div>
             </div>
 
-            {/* 4) Şablon Yükleme */}
-            <div className="pt-4 mt-2 border-t border-border">
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <div className="pt-0.5">
-                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${loadTemplate ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-300 group-hover:border-primary-400'}`}>
-                    {loadTemplate && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                  </div>
-                  <input 
-                    type="checkbox" 
-                    className="sr-only"
-                    checked={loadTemplate}
-                    onChange={(e) => setLoadTemplate(e.target.checked)}
-                  />
-                </div>
-                <div>
-                  <span className="text-sm font-semibold text-text-primary flex items-center gap-1.5">
-                    <DownloadCloud className="w-4 h-4 text-primary-600" />
-                    Standart Ev Bütçesi Kategorilerini Yükle
-                  </span>
-                  <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                    Sıfırdan uğraşmayın. Sık kullanılan 10 ana (Market, Fatura vb.) ve 19 alt kategori hesabınıza otomatik tanımlansın.
-                  </p>
-                </div>
-              </label>
+            {error && (
+              <div className="mb-6 p-4 rounded-xl bg-danger-50 border border-danger-500/20 text-danger-700 text-sm animate-fade-in flex items-start gap-3">
+                <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+            )}
 
-              {loadTemplate && (
-                <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                  <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-blue-800 leading-tight">
-                    <strong className="font-semibold">Bilgi:</strong> Bu işlem sisteminize 30'a yakın hazır ana ve alt kategori ekleyecektir. İstemediğiniz kategorileri daha sonra rahatlıkla ayarlar bölümünden silebilirsiniz.
-                  </p>
+            {/* STEP 1 */}
+            <div className="min-h-[280px]">
+              {currentStep === 1 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">Çalışma Alanı Adı</h2>
+                    <p className="text-text-secondary text-sm">Finansal alanınızı isimlendirin. Bu ismi daha sonra değiştirebilirsiniz.</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="appName" className="text-sm font-semibold text-text-secondary">Çalışma Alanı Adı</label>
+                    <div className="relative">
+                      <Type className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input
+                        id="appName"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Örn: Ev Bütçem, Eczane Bilançosu"
+                        required
+                        maxLength={50}
+                        className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all font-medium text-base shadow-sm"
+                        onKeyDown={(e) => e.key === "Enter" && nextStep()}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2 */}
+              {currentStep === 2 && (
+                <div className="space-y-8 animate-fade-in">
+                  <div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">Hesap Türünüz</h2>
+                    <p className="text-text-secondary text-sm">Uygulamayı hangi amaçla kullanacağınızı seçin.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("personal")}
+                      className={`relative flex flex-col items-center justify-center p-5 cursor-pointer rounded-2xl border-2 transition-all duration-200 text-center ${
+                        accountType === "personal"
+                        ? "border-primary-600 bg-primary-50/50 shadow-md shadow-primary-500/10"
+                        : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center transition-colors ${accountType === "personal" ? "bg-primary-600 text-white" : "bg-gray-100 text-text-secondary"}`}>
+                        <Wallet className="w-6 h-6" />
+                      </div>
+                      <span className={`font-bold text-base mb-1 ${accountType === "personal" ? "text-primary-700" : "text-text-primary"}`}>Bireysel</span>
+                      <p className="text-[11px] text-text-muted leading-relaxed">Nakit ve kredi kartı borcunuzu ayrı takip edin.</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAccountType("business")}
+                      className={`relative flex flex-col items-center justify-center p-5 cursor-pointer rounded-2xl border-2 transition-all duration-200 text-center ${
+                        accountType === "business"
+                        ? "border-primary-600 bg-primary-50/50 shadow-md shadow-primary-500/10"
+                        : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center transition-colors ${accountType === "business" ? "bg-primary-600 text-white" : "bg-gray-100 text-text-secondary"}`}>
+                        <BarChart3 className="w-6 h-6" />
+                      </div>
+                      <span className={`font-bold text-base mb-1 ${accountType === "business" ? "text-primary-700" : "text-text-primary"}`}>İşletme</span>
+                      <p className="text-[11px] text-text-muted leading-relaxed">Sadece toplam gelir/gider bazlı sade görünüm.</p>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    <label htmlFor="salaryDay" className="text-sm font-semibold text-text-secondary">Bütçe Başlangıç / Maaş Günü</label>
+                    <div className="relative">
+                      <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input
+                        id="salaryDay"
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={salaryDay}
+                        onChange={handleSalaryDayChange}
+                        placeholder="Örn: 15"
+                        required
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all font-medium text-base shadow-sm"
+                        onKeyDown={(e) => e.key === "Enter" && nextStep()}
+                      />
+                    </div>
+                    <p className="text-xs text-text-muted mt-1.5 ml-1">Aylık raporlamalar bu güne baz alınarak hesaplanır.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3 */}
+              {currentStep === 3 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">Kategori Otomasyonu</h2>
+                    <p className="text-text-secondary text-sm">Zaman kazanmak için hazır ayarlarla başlayın.</p>
+                  </div>
+                  
+                  <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-text-primary text-base mb-1">Standart Kategorileri Oluştur</h3>
+                        <p className="text-sm text-text-secondary leading-relaxed mb-4 pr-1">
+                          Sizin için standart gelir-gider kategorilerini (Market, Fatura, Maaş vb.) oluşturalım mı? Daha sonra isterseniz değiştirebilirsiniz.
+                        </p>
+                        <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                          <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-md text-text-secondary shadow-sm">Market</span>
+                          <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-md text-text-secondary shadow-sm">Faturalar</span>
+                          <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-md text-text-secondary shadow-sm">Ulaşım</span>
+                          <span className="px-2.5 py-1 text-text-muted flex items-center">+20 daha</span>
+                        </div>
+                      </div>
+                      
+                      {/* Custom Toggle Switch */}
+                      <button
+                        type="button"
+                        onClick={() => setLoadTemplate(!loadTemplate)}
+                        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2 ${loadTemplate ? 'bg-primary-600' : 'bg-gray-200'}`}
+                        role="switch"
+                        aria-checked={loadTemplate}
+                      >
+                        <span className="sr-only">Şablon yükle</span>
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${loadTemplate ? 'translate-x-5' : 'translate-x-0'}`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !name.trim()}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-base mt-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Sistem Kuruluyor...
-                </>
-              ) : (
-                "Kaydet ve Başla →"
+            {/* NAVIGATION BUTTONS */}
+            <div className="flex items-center gap-3 pt-6 border-t border-gray-100 mt-6">
+              {currentStep > 1 && (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-5 py-3.5 rounded-xl border border-gray-200 bg-white text-text-primary font-semibold hover:bg-gray-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Geri
+                </button>
               )}
-            </button>
-          </form>
-        </div>
+              
+              {currentStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-text-primary text-white font-semibold rounded-xl hover:bg-black focus:outline-none focus:ring-2 focus:ring-text-primary focus:ring-offset-2 transition-all shadow-sm shadow-gray-400/20"
+                >
+                  Devam Et
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all shadow-md shadow-primary-500/20"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Kurulumu Tamamla
+                </button>
+              )}
+            </div>
+            
+          </div>
+        )}
       </div>
     </div>
   );
