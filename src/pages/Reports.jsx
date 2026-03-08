@@ -759,15 +759,15 @@ export default function Reports() {
                 </div>
               ) : (
                 <>
-                  <div className="h-[300px] w-full mt-2 cursor-pointer select-none">
+                  <div className="min-h-[400px] w-full mt-4 cursor-pointer select-none">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={expenseChartData}
-                          cx="45%"
-                          cy="50%"
-                          innerRadius={70}
-                          outerRadius={100}
+                          cx="50%"
+                          cy="45%"
+                          innerRadius="55%"
+                          outerRadius="80%"
                           paddingAngle={3}
                           dataKey="value"
                           onClick={handlePieClick}
@@ -789,10 +789,10 @@ export default function Reports() {
                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                         />
                         <Legend 
-                           layout="vertical"
-                           verticalAlign="middle" 
-                           align="right"
-                           wrapperStyle={{ paddingLeft: '10px' }}
+                           layout="horizontal"
+                           verticalAlign="bottom" 
+                           align="center"
+                           wrapperStyle={{ paddingTop: '20px' }}
                            iconType="circle"
                            formatter={(value, entry) => (
                              <span className="text-sm font-medium text-text-secondary whitespace-nowrap">{value}</span>
