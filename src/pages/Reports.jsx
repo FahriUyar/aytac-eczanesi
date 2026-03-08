@@ -858,7 +858,7 @@ export default function Reports() {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-[200px]">
+                  <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-[200px] max-h-[450px]">
                     {selectedParentTransactions.length === 0 ? (
                       <p className="text-sm text-text-muted text-center py-6">
                         İşlem bulunamadı.
