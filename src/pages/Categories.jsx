@@ -126,6 +126,24 @@ export default function Categories() {
     setError("");
 
     try {
+      // 1. Orphan Data Koruması: Seçili kategorilerde işlem (transaction) var mı kontrol et
+      const { data: linkedTransactions, error: checkError } = await supabase
+        .from("transactions")
+        .select("category_id")
+        .in("category_id", selectedCategories)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (linkedTransactions && linkedTransactions.length > 0) {
+        setError(
+          "Hata: Seçtiğiniz bazı kategorilere ait harcama kayıtları bulunuyor. Verilerinizin bozulmaması (Kategorisiz kalmaması) için içinde işlem bulunan kategorileri silemezsiniz."
+        );
+        setIsDeletingBulk(false);
+        return;
+      }
+
+      // 2. Eğer işlem yoksa silme işlemine devam et
       const { error } = await supabase
         .from("categories")
         .delete()
