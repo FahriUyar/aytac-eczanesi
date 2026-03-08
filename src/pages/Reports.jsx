@@ -766,8 +766,8 @@ export default function Reports() {
                           data={expenseChartData}
                           cx="50%"
                           cy="45%"
-                          innerRadius="55%"
-                          outerRadius="80%"
+                          innerRadius={80}
+                          outerRadius={120}
                           paddingAngle={3}
                           dataKey="value"
                           onClick={handlePieClick}
