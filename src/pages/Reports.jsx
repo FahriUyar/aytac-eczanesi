@@ -777,6 +777,7 @@ export default function Reports() {
                           dataKey="value"
                           onClick={handlePieClick}
                           stroke="none"
+                          style={{ outline: "none", cursor: "pointer" }}
                         >
                           {expenseChartData.map((entry, index) => (
                             <Cell
@@ -857,7 +858,7 @@ export default function Reports() {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-[200px] max-h-[300px]">
+                  <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-[200px]">
                     {selectedParentTransactions.length === 0 ? (
                       <p className="text-sm text-text-muted text-center py-6">
                         İşlem bulunamadı.
