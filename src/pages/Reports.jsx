@@ -94,13 +94,13 @@ export default function Reports() {
   // Görev 1: Kapıdaki kişiyi öğren
   const { user } = useAuth();
   const now = new Date();
-  
+
   // Date Range state
   const getFirstDayOfMonth = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
   };
-  
+
   const getLastDayOfMonth = () => {
     const d = new Date();
     const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
@@ -237,7 +237,7 @@ export default function Reports() {
       .forEach((tx) => {
         const amount = Number(tx.amount);
         const cat = tx.categories;
-        
+
         // Find parent category ID and Name
         let parentId;
         let parentName;
@@ -258,17 +258,17 @@ export default function Reports() {
             value: 0,
           };
         }
-        
+
         parentMap[parentId].value += amount;
         totalExpenses += amount;
       });
 
     // Convert map to array and calculate percentage
     const data = Object.values(parentMap)
-      .filter(item => item.value > 0)
-      .map(item => ({
+      .filter((item) => item.value > 0)
+      .map((item) => ({
         ...item,
-        percentage: totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0
+        percentage: totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0,
       }))
       .sort((a, b) => b.value - a.value);
 
@@ -283,12 +283,17 @@ export default function Reports() {
   // Detailed transactions for selected parent category
   const selectedParentTransactions = useMemo(() => {
     if (!selectedParentCategory) return [];
-    
-    return yearlyData.filter(tx => {
-      if (tx.type !== "expense" || tx.is_transfer) return false;
-      const cat = tx.categories;
-      return tx.category_id === selectedParentCategory || cat?.parent_id === selectedParentCategory;
-    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return yearlyData
+      .filter((tx) => {
+        if (tx.type !== "expense" || tx.is_transfer) return false;
+        const cat = tx.categories;
+        return (
+          tx.category_id === selectedParentCategory ||
+          cat?.parent_id === selectedParentCategory
+        );
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [selectedParentCategory, yearlyData]);
 
   // ─── Yearly totals ───
@@ -490,14 +495,14 @@ export default function Reports() {
                 { id: "thisMonth", label: "Bu Ay" },
                 { id: "last3Months", label: "Son 3 Ay" },
                 { id: "last6Months", label: "Son 6 Ay" },
-                { id: "thisYear", label: "Bu Yıl" }
-              ].map(fast => (
+                { id: "thisYear", label: "Bu Yıl" },
+              ].map((fast) => (
                 <button
                   key={fast.id}
                   onClick={() => handleQuickSelect(fast.id)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors cursor-pointer ${
-                    activeQuickSelect === fast.id 
-                      ? "bg-primary-50 text-primary-700 border-primary-200" 
+                    activeQuickSelect === fast.id
+                      ? "bg-primary-50 text-primary-700 border-primary-200"
                       : "bg-white text-text-secondary border-border hover:bg-gray-50"
                   }`}
                 >
@@ -573,9 +578,7 @@ export default function Reports() {
                       }`}
                     />
                   </div>
-                  <span className="text-sm text-text-secondary">
-                    Net Durum
-                  </span>
+                  <span className="text-sm text-text-secondary">Net Durum</span>
                 </div>
                 <p
                   className={`text-xl font-bold ${
@@ -751,15 +754,17 @@ export default function Reports() {
                   Detayları görmek için bir dilime tıklayın.
                 </p>
               </div>
-              
+
               {expenseChartData.length === 0 ? (
                 <div className="text-center py-8 text-text-muted">
                   <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Seçili döneme ait gider verisi bulunamadı.</p>
+                  <p className="text-sm">
+                    Seçili döneme ait gider verisi bulunamadı.
+                  </p>
                 </div>
               ) : (
                 <>
-                  <div className="min-h-[400px] w-full mt-4 cursor-pointer select-none">
+                  <div className="h-[450px] w-full mt-4 cursor-pointer select-none">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -784,19 +789,29 @@ export default function Reports() {
                         <Tooltip
                           formatter={(value, name, props) => {
                             const percent = props.payload.percentage.toFixed(1);
-                            return [`${formatCurrency(value)} (%${percent})`, name];
+                            return [
+                              `${formatCurrency(value)} (%${percent})`,
+                              name,
+                            ];
                           }}
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "none",
+                            boxShadow:
+                              "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+                          }}
                         />
-                        <Legend 
-                           layout="horizontal"
-                           verticalAlign="bottom" 
-                           align="center"
-                           wrapperStyle={{ paddingTop: '20px' }}
-                           iconType="circle"
-                           formatter={(value, entry) => (
-                             <span className="text-sm font-medium text-text-secondary whitespace-nowrap">{value}</span>
-                           )}
+                        <Legend
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{ paddingTop: "20px" }}
+                          iconType="circle"
+                          formatter={(value, entry) => (
+                            <span className="text-sm font-medium text-text-secondary whitespace-nowrap">
+                              {value}
+                            </span>
+                          )}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -807,64 +822,85 @@ export default function Reports() {
 
             {/* Selected Category Details Table */}
             <Card className="flex flex-col h-full overflow-hidden">
-             {selectedParentCategory ? (
-               <>
+              {selectedParentCategory ? (
+                <>
                   <div className="flex items-center justify-between mb-4 shrink-0">
                     <div>
                       <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                         <span 
-                           className="w-3 h-3 rounded-full" 
-                           style={{
-                              backgroundColor: CHART_COLORS[expenseChartData.findIndex(d => d.id === selectedParentCategory) % CHART_COLORS.length] || '#ccc' 
-                           }}
-                         />
-                         {expenseChartData.find(d => d.id === selectedParentCategory)?.name} Detayları
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              CHART_COLORS[
+                                expenseChartData.findIndex(
+                                  (d) => d.id === selectedParentCategory,
+                                ) % CHART_COLORS.length
+                              ] || "#ccc",
+                          }}
+                        />
+                        {
+                          expenseChartData.find(
+                            (d) => d.id === selectedParentCategory,
+                          )?.name
+                        }{" "}
+                        Detayları
                       </h3>
                       <p className="text-sm text-text-secondary mt-1">
                         Bu kategori ve alt kategorilerindeki tüm harcamalar.
                       </p>
                     </div>
-                    <button 
-                       onClick={() => setSelectedParentCategory(null)}
-                       className="p-1.5 text-text-muted hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                    <button
+                      onClick={() => setSelectedParentCategory(null)}
+                      className="p-1.5 text-text-muted hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                     >
                       Kapat
                     </button>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto pr-2 -mr-2 min-h-[200px] max-h-[300px]">
                     {selectedParentTransactions.length === 0 ? (
-                      <p className="text-sm text-text-muted text-center py-6">İşlem bulunamadı.</p>
+                      <p className="text-sm text-text-muted text-center py-6">
+                        İşlem bulunamadı.
+                      </p>
                     ) : (
                       <ul className="space-y-2">
-                         {selectedParentTransactions.map((tx) => (
-                           <li key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-text-primary truncate">
-                                  {tx.categories?.name || "Kategorisiz"}
-                                </p>
-                                <p className="text-xs text-text-muted truncate">
-                                  {new Date(tx.date).toLocaleDateString("tr-TR")} {tx.description && `• ${tx.description}`}
-                                </p>
-                              </div>
-                              <span className="text-sm font-bold text-danger-700 shrink-0">
-                                {formatCurrency(tx.amount)}
-                              </span>
-                           </li>
-                         ))}
+                        {selectedParentTransactions.map((tx) => (
+                          <li
+                            key={tx.id}
+                            className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-text-primary truncate">
+                                {tx.categories?.name || "Kategorisiz"}
+                              </p>
+                              <p className="text-xs text-text-muted truncate">
+                                {new Date(tx.date).toLocaleDateString("tr-TR")}{" "}
+                                {tx.description && `• ${tx.description}`}
+                              </p>
+                            </div>
+                            <span className="text-sm font-bold text-danger-700 shrink-0">
+                              {formatCurrency(tx.amount)}
+                            </span>
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </div>
-               </>
-             ) : (
+                </>
+              ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center p-6 text-text-muted">
-                   <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4 border border-gray-100">
-                     <PieChart className="w-8 h-8 opacity-30" />
-                   </div>
-                   <h4 className="text-sm font-semibold mb-2 text-text-primary">Detay Görünümü</h4>
-                   <p className="text-sm max-w-[200px]">Sağdaki grafikten bir kategoriye tıklayarak altındaki tüm harcama detaylarını inceleyebilirsiniz.</p>
+                  <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4 border border-gray-100">
+                    <PieChart className="w-8 h-8 opacity-30" />
+                  </div>
+                  <h4 className="text-sm font-semibold mb-2 text-text-primary">
+                    Detay Görünümü
+                  </h4>
+                  <p className="text-sm max-w-[200px]">
+                    Sağdaki grafikten bir kategoriye tıklayarak altındaki tüm
+                    harcama detaylarını inceleyebilirsiniz.
+                  </p>
                 </div>
-             )}
+              )}
             </Card>
           </div>
 
