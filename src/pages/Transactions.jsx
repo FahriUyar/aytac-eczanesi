@@ -664,145 +664,151 @@ export default function Transactions() {
               placeholder="İşlem açıklaması..."
             />
 
-            {/* ── TAKSİT ALANI ──
-                Checkbox işaretlenince açıkça görünür hale gelir.
-                Neden burada? Kullanıcı tek taksit de girebilir (normal işlem),
-                ya da birden fazla ay döşontirmek isteyebilir. */}
-            <div className="flex flex-wrap items-center gap-4 pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  id="txInstallment"
-                  checked={formData.isInstallment}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      isInstallment: e.target.checked,
-                    })
-                  }
-                  className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-text-secondary">
-                  Taksitli İşlem
-                </span>
-              </label>
+            {/* ── GELİŞMİŞ AYARLAR (FİNANSAL DETAYLAR KUTUSU) ──
+                Ödeme Yöntemi, Taksitli İşlem ve Borç Ödemesi alanlarını
+                görsel olarak ayırıp daha kullanıcı dostu gösteriyoruz. */}
+            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 mt-4 space-y-4 animate-fade-in shadow-sm">
+              
+              {/* Ödeme Yöntemi Kartları (Sadece Gider ve Normal İşlem ise) */}
+              {formData.type === "expense" && !formData.is_transfer && (
+                <div className="space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">
+                    Ödeme Yöntemi
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, payment_method: "cash" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        formData.payment_method === "cash"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 font-medium shadow-sm"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      Banka / Nakit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, payment_method: "credit_card" })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        formData.payment_method === "credit_card"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 font-medium shadow-sm"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Kredi Kartı
+                    </button>
+                  </div>
+                </div>
+              )}
 
-              {formData.isInstallment && (
-                <div className="flex items-center gap-3 animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-text-secondary whitespace-nowrap">
-                      Taksit Sayısı:
-                    </label>
-                    <select
-                      value={formData.installmentCount}
+              {/* ── TAKSİT ALANI ── */}
+              <div className="flex flex-col gap-3">
+                <label className="flex items-start gap-4 cursor-pointer group">
+                  <div className="relative flex items-center mt-0.5">
+                    <input
+                      type="checkbox"
+                      id="txInstallment"
+                      checked={formData.isInstallment}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          installmentCount: Number(e.target.value),
+                          isInstallment: e.target.checked,
                         })
                       }
-                      className="px-3 py-2 text-sm rounded-xl border border-border bg-card text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>
-                          {n} ay
-                        </option>
-                      ))}
-                    </select>
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
                   </div>
-                  {formData.amount > 0 && (
-                    <span className="text-xs text-text-muted">
-                      Her ay:{" "}
-                      <strong className="text-primary-700">
-                        {new Intl.NumberFormat("tr-TR", {
-                          style: "currency",
-                          currency: "TRY",
-                          minimumFractionDigits: 2,
-                        }).format(
-                          Math.round(
-                            (formData.amount / formData.installmentCount) * 100,
-                          ) / 100,
-                        )}
-                      </strong>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                      Taksitli İşlem
                     </span>
-                  )}
+                    <span className="text-xs text-gray-500 leading-relaxed">
+                      Bu harcamayı aylara bölerek ödeyin.
+                    </span>
+                  </div>
+                </label>
+
+                {formData.isInstallment && (
+                  <div className="flex items-center gap-3 ml-14 animate-fade-in bg-white p-3 rounded-lg border border-gray-200 shadow-sm mt-1">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600 font-medium whitespace-nowrap">
+                        Taksit Sayısı:
+                      </label>
+                      <select
+                        value={formData.installmentCount}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            installmentCount: Number(e.target.value),
+                          })
+                        }
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            {n} ay
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {formData.amount > 0 && (
+                      <span className="text-xs text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 flex items-center gap-1.5 ml-auto">
+                        Ay başına:{" "}
+                        <strong className="text-blue-700 text-sm">
+                          {new Intl.NumberFormat("tr-TR", {
+                            style: "currency",
+                            currency: "TRY",
+                            minimumFractionDigits: 2,
+                          }).format(
+                            Math.round(
+                              (formData.amount / formData.installmentCount) * 100,
+                            ) / 100,
+                          )}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── KREDİ KARTI / BORÇ ÖDEMESİ ── */}
+              {formData.type === "expense" && (
+                <div className="pt-2 border-t border-gray-200/60 animate-fade-in mt-2 flex flex-col gap-3">
+                  <label className="flex items-start gap-4 cursor-pointer group mt-2">
+                    <div className="relative flex items-center mt-0.5">
+                      <input
+                        type="checkbox"
+                        id="txIsTransfer"
+                        checked={formData.is_transfer}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            is_transfer: e.target.checked,
+                            // Borç ödemesi ise, para nakitten çıkar
+                            payment_method: e.target.checked
+                              ? "cash"
+                              : formData.payment_method,
+                          })
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 flex items-center gap-2 transition-colors">
+                        Ekstre veya Borç Ödemesi
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Bu işlem aylık gider grafiklerinize yansımaz, sadece kasadaki nakit ve borç bakiyenizi günceller.
+                      </span>
+                    </div>
+                  </label>
                 </div>
               )}
             </div>
-
-            {/* ── KREDİ KARTI / BORÇ ÖDEMESİ ──
-                Sadece "Gider" seçiliyken görünür.
-                İşaretlenirse toplam gider hesabından hariç tutulur. */}
-            {formData.type === "expense" && (
-              <div className="space-y-3 pt-1 animate-fade-in">
-                {/* Ödeme Yöntemi */}
-                {!formData.is_transfer && (
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-text-secondary">
-                      Ödeme Yöntemi:
-                    </span>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="txPaymentMethod"
-                        value="cash"
-                        checked={formData.payment_method === "cash"}
-                        onChange={() =>
-                          setFormData({ ...formData, payment_method: "cash" })
-                        }
-                        className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
-                      />
-                      <span className="text-sm text-text-secondary">
-                        🏦 Nakit / Banka
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="txPaymentMethod"
-                        value="credit_card"
-                        checked={formData.payment_method === "credit_card"}
-                        onChange={() =>
-                          setFormData({
-                            ...formData,
-                            payment_method: "credit_card",
-                          })
-                        }
-                        className="w-4 h-4 text-primary-600 accent-primary-600 cursor-pointer"
-                      />
-                      <span className="text-sm text-text-secondary">
-                        💳 Kredi Kartı
-                      </span>
-                    </label>
-                  </div>
-                )}
-
-                {/* Kredi Kartı Borç Ödemesi */}
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    id="txIsTransfer"
-                    checked={formData.is_transfer}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        is_transfer: e.target.checked,
-                        // Borç ödemesi ise, para nakitten çıkar
-                        payment_method: e.target.checked
-                          ? "cash"
-                          : formData.payment_method,
-                      })
-                    }
-                    className="w-4 h-4 rounded border-border text-primary-600 accent-primary-600 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-primary-500" />
-                    Bu bir kredi kartı / borç ödemesidir (Toplam giderden hariç
-                    tut)
-                  </span>
-                </label>
-              </div>
-            )}
 
             <div className="flex justify-end">
               <Button type="submit" disabled={saving}>
