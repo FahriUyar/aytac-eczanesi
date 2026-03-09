@@ -49,7 +49,7 @@ export function useRecurringCheck() {
 
       for (const rec of recurring) {
         if (rec.frequency === "monthly") {
-          // Check if already generated this month
+          // Check if already generated this month (Client-side fast check)
           const lastGen = rec.last_generated
             ? new Date(rec.last_generated)
             : null;
@@ -64,8 +64,28 @@ export function useRecurringCheck() {
           const dayToGenerate = rec.day_of_month || 1;
           if (today < dayToGenerate) continue;
 
-          // Generate the transaction — user_id zorunlu
           const genDate = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(dayToGenerate).padStart(2, "0")}`;
+          
+          const startOfMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
+          const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const endOfMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+          // Görev 1: Insert Öncesi DB Check (Idempotency)
+          const { data: existingRecords } = await supabase
+            .from("transactions")
+            .select("id")
+            .eq("group_id", rec.id)
+            .gte("date", startOfMonth)
+            .lte("date", endOfMonth)
+            .limit(1);
+
+          // Görev 2: Güvenli Ekleme (Skip Logic)
+          if (existingRecords && existingRecords.length > 0) {
+             // Zaten Database'de bu kural için bu ay kayıt var, atla
+             // Ayrıca last_generated'i güncelleyelim ki bir daha DB'ye sormasın (Optimizasyon)
+             await supabase.from("recurring_transactions").update({ last_generated: genDate }).eq("id", rec.id);
+             continue;
+          }
 
           // Önce last_generated'ı güncelle ki tekrar çalışırsa skip etsin
           const { error: updateError } = await supabase
@@ -83,6 +103,8 @@ export function useRecurringCheck() {
               amount: rec.amount,
               type: rec.type,
               category_id: rec.category_id,
+              group_id: rec.id, // Referansı bağla
+              payment_method: rec.type === "expense" ? (rec.payment_method || "cash") : "cash",
               description: rec.description
                 ? `${rec.description} (otomatik)`
                 : "Otomatik tekrarlayan işlem",
@@ -102,6 +124,20 @@ export function useRecurringCheck() {
           if (lastGen && lastGen > oneWeekAgo) continue;
 
           const genDate = now.toISOString().split("T")[0];
+          
+          // Görev 1 & 2: Haftalık Insert Öncesi Check
+          const oneWeekAgoStr = oneWeekAgo.toISOString().split("T")[0];
+          const { data: existingRecords } = await supabase
+            .from("transactions")
+            .select("id")
+            .eq("group_id", rec.id)
+            .gte("date", oneWeekAgoStr)
+            .limit(1);
+
+          if (existingRecords && existingRecords.length > 0) {
+             await supabase.from("recurring_transactions").update({ last_generated: genDate }).eq("id", rec.id);
+             continue;
+          }
 
           // Önce last_generated'ı güncelle
           const { error: updateError } = await supabase
@@ -119,6 +155,8 @@ export function useRecurringCheck() {
               amount: rec.amount,
               type: rec.type,
               category_id: rec.category_id,
+              group_id: rec.id, // Referansı bağla
+              payment_method: rec.type === "expense" ? (rec.payment_method || "cash") : "cash",
               description: rec.description
                 ? `${rec.description} (otomatik)`
                 : "Otomatik haftalık işlem",
