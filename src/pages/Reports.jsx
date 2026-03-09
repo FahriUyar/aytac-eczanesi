@@ -113,6 +113,9 @@ export default function Reports() {
   const [yearlyData, setYearlyData] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Custom states for date picker control
+  const [endDateOpen, setEndDateOpen] = useState(false);
 
   // Quick Select Logic
   const handleQuickSelect = (range) => {
@@ -153,8 +156,15 @@ export default function Reports() {
   // Manual Date Change resets quick select
   const handleManualDateChange = (type, val) => {
     setActiveQuickSelect("");
-    if (type === "start") setStartDate(val);
-    if (type === "end") setEndDate(val);
+    if (type === "start") {
+      setStartDate(val);
+      // Görev 1: Başlangıç tarihi seçildiğinde Bitiş tarihi takvimini otomatik aç
+      setEndDateOpen(true);
+    }
+    if (type === "end") {
+      setEndDate(val);
+      setEndDateOpen(false);
+    }
   };
 
   // Category trend
@@ -527,6 +537,8 @@ export default function Reports() {
                   value={endDate}
                   onChange={(val) => handleManualDateChange("end", val)}
                   className="w-[140px] sm:w-[160px] py-2 text-sm"
+                  isOpen={endDateOpen}
+                  onOpenChange={setEndDateOpen}
                 />
               </div>
             </div>

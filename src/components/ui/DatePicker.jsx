@@ -26,8 +26,22 @@ export default function DatePicker({
   onChange, // (dateStr) => void
   error,
   className = "",
+  isOpen, // Optional controlled state
+  onOpenChange, // Optional callback for open state changes
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Eğer dışarıdan isOpen geliyorsa onu kullan, yoksa iç state'i
+  const open = isOpen !== undefined ? isOpen : internalOpen;
+  
+  const handleOpenChange = (newOpen) => {
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
+  };
+
   const ref = useRef(null);
 
   const today = new Date();
@@ -39,7 +53,7 @@ export default function DatePicker({
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
+        handleOpenChange(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -69,12 +83,12 @@ export default function DatePicker({
     setViewYear(t.getFullYear());
     setViewMonth(t.getMonth());
     onChange(`${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`);
-    setOpen(false);
+    handleOpenChange(false);
   };
 
   const selectDay = (day) => {
     onChange(`${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`);
-    setOpen(false);
+    handleOpenChange(false);
   };
 
   // Ayın günlerini hesapla
@@ -129,7 +143,7 @@ export default function DatePicker({
       <button
         type="button"
         id={id}
-        onClick={() => setOpen(!open)}
+        onClick={() => handleOpenChange(!open)}
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border bg-white text-left transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
           error ? "border-danger-500" : ""
         } ${value ? "text-text-primary" : "text-text-muted"} ${className}`}
