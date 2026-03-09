@@ -29,6 +29,7 @@ import {
   Pencil,
   CreditCard,
   Banknote,
+  Landmark,
 } from "lucide-react";
 
 // MONTH_NAMES artık salaryCycle.js içinde — burada kullanılmıyor.
@@ -39,6 +40,24 @@ const formatCurrency = (amount) =>
     currency: "TRY",
     minimumFractionDigits: 2,
   }).format(amount);
+
+// ─── Payment Badge Component ───
+export const PaymentBadge = ({ method }) => {
+  if (method === "credit_card") {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 mt-0.5">
+        <CreditCard className="w-3 h-3" />
+        Kredi Kartı
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 mt-0.5">
+      <Landmark className="w-3 h-3" />
+      Nakit
+    </span>
+  );
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -688,6 +707,15 @@ export default function Dashboard() {
                             {tx.description ||
                               new Date(tx.date).toLocaleDateString("tr-TR")}
                           </p>
+                          {tx.type === "expense" && !tx.is_transfer && (
+                            <PaymentBadge method={tx.payment_method} />
+                          )}
+                          {tx.is_transfer && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-medium bg-primary-50 text-primary-700 border border-primary-100 mt-0.5">
+                              <CreditCard className="w-3 h-3" />
+                              Ödeme
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span

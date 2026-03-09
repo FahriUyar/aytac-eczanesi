@@ -33,6 +33,7 @@ import {
   Square,
   MinusSquare,
   CreditCard,
+  Landmark,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -74,6 +75,24 @@ const formatDate = (dateStr) =>
     month: "2-digit",
     year: "numeric",
   });
+
+// ─── Payment Badge Component ───
+export const PaymentBadge = ({ method }) => {
+  if (method === "credit_card") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 mt-1">
+        <CreditCard className="w-3 h-3" />
+        Kredi Kartı
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 mt-1">
+      <Landmark className="w-3 h-3" />
+      Nakit / Banka
+    </span>
+  );
+};
 
 const EMPTY_FORM = {
   date: new Date().toISOString().split("T")[0],
@@ -1321,8 +1340,22 @@ export default function Transactions() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-3.5 text-text-secondary">
-                      {tx.categories?.name || "—"}
+                    <td className="px-6 py-3.5">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-text-secondary">
+                          {tx.categories?.name || "—"}
+                        </span>
+                        {/* Ödeme Yöntemi Rozeti (Sadece Giderlerde veya tümünde, isteğe bağlı ama gider daha anlamlı. Şimdilik hepsinde gösterilebilir veya sadece giderde) */}
+                        {tx.type === "expense" && !tx.is_transfer && (
+                           <PaymentBadge method={tx.payment_method} />
+                        )}
+                        {tx.is_transfer && (
+                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary-50 text-primary-700 border border-primary-100 mt-1">
+                             <CreditCard className="w-3 h-3" />
+                             Ödeme (Transfer)
+                           </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-3.5 text-text-secondary max-w-[200px] truncate">
                       {tx.description || "—"}
