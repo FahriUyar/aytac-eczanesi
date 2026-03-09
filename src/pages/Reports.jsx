@@ -489,17 +489,8 @@ export default function Reports() {
         </p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* ═══════════════════════════════════════════
-              SECTION 1: YEARLY OVERVIEW
-          ═══════════════════════════════════════════ */}
-          <div className="space-y-4">
-            {/* Quick Filters */}
+      <div className="space-y-4">
+        {/* Quick Filters */}
             <div className="flex flex-wrap items-center gap-2 mb-2">
               {[
                 { id: "thisMonth", label: "Bu Ay" },
@@ -542,9 +533,17 @@ export default function Reports() {
                 />
               </div>
             </div>
+          </div>
 
-            {/* Yearly Summary Cards */}
-            <div className="grid sm:grid-cols-3 gap-4">
+          {loading ? (
+            <div className="flex justify-center py-20 border border-gray-100 rounded-xl bg-gray-50/50">
+              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {/* Yearly Summary Cards */}
+                <div className="grid sm:grid-cols-3 gap-4">
               <Card className="relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 rounded-lg bg-success-50 flex items-center justify-center">
@@ -1210,8 +1209,8 @@ export default function Reports() {
               )}
             </Card>
           </div>
-        </>
-      )}
+          </>
+        )}
     </div>
   );
 }
