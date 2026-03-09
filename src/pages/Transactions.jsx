@@ -678,7 +678,12 @@ export default function Transactions() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, payment_method: "cash" })}
+                      onClick={() => setFormData({ 
+                        ...formData, 
+                        payment_method: "cash",
+                        isInstallment: false,
+                        installmentCount: 3
+                      })}
                       className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${
                         formData.payment_method === "cash"
                           ? "bg-blue-50 border-blue-500 text-blue-700 font-medium shadow-sm"
@@ -704,75 +709,77 @@ export default function Transactions() {
               )}
 
               {/* ── TAKSİT ALANI ── */}
-              <div className="flex flex-col gap-3">
-                <label className="flex items-start gap-4 cursor-pointer group">
-                  <div className="relative flex items-center mt-0.5">
-                    <input
-                      type="checkbox"
-                      id="txInstallment"
-                      checked={formData.isInstallment}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          isInstallment: e.target.checked,
-                        })
-                      }
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                      Taksitli İşlem
-                    </span>
-                    <span className="text-xs text-gray-500 leading-relaxed">
-                      Bu harcamayı aylara bölerek ödeyin.
-                    </span>
-                  </div>
-                </label>
-
-                {formData.isInstallment && (
-                  <div className="flex items-center gap-3 ml-14 animate-fade-in bg-white p-3 rounded-lg border border-gray-200 shadow-sm mt-1">
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600 font-medium whitespace-nowrap">
-                        Taksit Sayısı:
-                      </label>
-                      <select
-                        value={formData.installmentCount}
+              {formData.payment_method === "credit_card" && (
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-start gap-4 cursor-pointer group">
+                    <div className="relative flex items-center mt-0.5">
+                      <input
+                        type="checkbox"
+                        id="txInstallment"
+                        checked={formData.isInstallment}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            installmentCount: Number(e.target.value),
+                            isInstallment: e.target.checked,
                           })
                         }
-                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                          <option key={n} value={n}>
-                            {n} ay
-                          </option>
-                        ))}
-                      </select>
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
                     </div>
-                    {formData.amount > 0 && (
-                      <span className="text-xs text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 flex items-center gap-1.5 ml-auto">
-                        Ay başına:{" "}
-                        <strong className="text-blue-700 text-sm">
-                          {new Intl.NumberFormat("tr-TR", {
-                            style: "currency",
-                            currency: "TRY",
-                            minimumFractionDigits: 2,
-                          }).format(
-                            Math.round(
-                              (formData.amount / formData.installmentCount) * 100,
-                            ) / 100,
-                          )}
-                        </strong>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                        Taksitli İşlem
                       </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                      <span className="text-xs text-gray-500 leading-relaxed">
+                        Bu harcamayı aylara bölerek ödeyin.
+                      </span>
+                    </div>
+                  </label>
+
+                  {formData.isInstallment && (
+                    <div className="flex items-center gap-3 ml-14 animate-fade-in bg-white p-3 rounded-lg border border-gray-200 shadow-sm mt-1">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-600 font-medium whitespace-nowrap">
+                          Taksit Sayısı:
+                        </label>
+                        <select
+                          value={formData.installmentCount}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              installmentCount: Number(e.target.value),
+                            })
+                          }
+                          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                            <option key={n} value={n}>
+                              {n} ay
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {formData.amount > 0 && (
+                        <span className="text-xs text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 flex items-center gap-1.5 ml-auto">
+                          Ay başına:{" "}
+                          <strong className="text-blue-700 text-sm">
+                            {new Intl.NumberFormat("tr-TR", {
+                              style: "currency",
+                              currency: "TRY",
+                              minimumFractionDigits: 2,
+                            }).format(
+                              Math.round(
+                                (formData.amount / formData.installmentCount) * 100,
+                              ) / 100,
+                            )}
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* ── KREDİ KARTI / BORÇ ÖDEMESİ ── */}
               {formData.type === "expense" && (
@@ -791,6 +798,8 @@ export default function Transactions() {
                             payment_method: e.target.checked
                               ? "cash"
                               : formData.payment_method,
+                            isInstallment: e.target.checked ? false : formData.isInstallment,
+                            installmentCount: e.target.checked ? 3 : formData.installmentCount,
                           })
                         }
                         className="sr-only peer"
