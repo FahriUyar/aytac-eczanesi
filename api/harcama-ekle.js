@@ -12,10 +12,12 @@ import { createClient } from "@supabase/supabase-js";
  *   x-api-key: <API_SECRET_KEY>
  */
 
-// ── Supabase istemcisi (sunucu tarafı, import.meta.env kullanılamaz) ──
+// ── Supabase istemcisi (sunucu tarafı — service_role key ile RLS bypass) ──
+// Anon key kullanırsak RLS "giriş yapmış kullanıcı" arar ve engeller.
+// Service role key sunucu tarafında güvenle kullanılabilir.
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 /**
