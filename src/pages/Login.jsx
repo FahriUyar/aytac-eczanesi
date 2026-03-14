@@ -94,7 +94,6 @@ export default function Login() {
 
   return (
     <div className="h-screen w-full grid md:grid-cols-2 bg-white selection:bg-blue-100 selection:text-blue-900">
-      
       {/* ─────────────────────────────────────────────────────────────
           LEFT PANE (Brand & Trust / Dark Blue)
       ────────────────────────────────────────────────────────────── */}
@@ -106,7 +105,17 @@ export default function Login() {
         <div className="relative z-10 flex flex-col items-center">
           {/* Logo Context (Optional, can be replaced with real logo) */}
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-blue-900/50">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="text-white"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="3" y1="9" x2="21" y2="9"></line>
               <line x1="9" y1="21" x2="9" y2="9"></line>
@@ -116,14 +125,17 @@ export default function Login() {
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4 leading-tight">
             Finansal geleceğinizi <br /> tasarlayın.
           </h1>
-          
+
           <p className="text-slate-300 text-lg mb-12 max-w-sm">
-            Bilanço Takip ile gelir ve giderlerinizi profesyonel bir SaaS deneyimiyle yönetin.
+            Bilanço Takip ile gelir ve giderlerinizi profesyonel bir SaaS
+            deneyimiyle yönetin.
           </p>
 
           <div className="flex items-center justify-center gap-2 text-sm text-slate-400 font-medium">
             <Lock className="w-4 h-4 text-slate-500" />
-            <span>Verileriniz modern şifreleme standartlarıyla korunmaktadır.</span>
+            <span>
+              Verileriniz modern şifreleme standartlarıyla korunmaktadır.
+            </span>
           </div>
         </div>
       </div>
@@ -132,11 +144,20 @@ export default function Login() {
           RIGHT PANE (Form Area / Pure White)
       ────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col justify-center items-center bg-white p-6 sm:p-12 relative overflow-y-auto">
-        
         {/* Mobile Header (Visible only on small screens) */}
         <div className="md:hidden flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="text-white"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="3" y1="9" x2="21" y2="9"></line>
               <line x1="9" y1="21" x2="9" y2="9"></line>
@@ -146,13 +167,14 @@ export default function Login() {
         </div>
 
         <div className="w-full max-w-sm animate-fade-in">
-          
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">
               {isLogin ? "Tekrar Hoş Geldiniz" : "Hesap Oluşturun"}
             </h2>
             <p className="text-sm text-gray-500">
-              {isLogin ? "Hesabınıza erişmek için bilgilerinizi girin." : "Finansal kontrolünüzü elinize almak için hemen başlayın."}
+              {isLogin
+                ? "Hesabınıza erişmek için bilgilerinizi girin."
+                : "Finansal kontrolünüzü elinize almak için hemen başlayın."}
             </p>
           </div>
 
@@ -185,22 +207,52 @@ export default function Login() {
           {/* Form Messages */}
           {error && (
             <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm flex items-start gap-3 animate-fade-in">
-              <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg
+                className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
               <p>{error}</p>
             </div>
           )}
 
           {success && (
             <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm flex items-start gap-3 animate-fade-in">
-              <svg className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+              <svg
+                className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
+              </svg>
               <p>{success}</p>
             </div>
           )}
 
-          <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-5">
+          <form
+            onSubmit={isLogin ? handleLogin : handleRegister}
+            className="space-y-5"
+          >
             {/* Email */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 E-posta Adresi
               </label>
               <input
@@ -216,7 +268,10 @@ export default function Login() {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Şifre
               </label>
               <div className="relative">
@@ -235,7 +290,11 @@ export default function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center p-1"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -243,7 +302,10 @@ export default function Login() {
             {/* Davet Kodu — sadece Kayıt Ol modunda */}
             {!isLogin && (
               <div className="space-y-1.5 animate-fade-in pb-2">
-                <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="referralCode"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Davet Kodu (Şirket/Kurum Kodu)
                 </label>
                 <input
@@ -276,9 +338,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-
-
         </div>
       </div>
     </div>
