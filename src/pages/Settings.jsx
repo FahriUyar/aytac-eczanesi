@@ -12,6 +12,7 @@ import {
   Building2,
   Wallet,
   DownloadCloud,
+  Send,
 } from "lucide-react";
 import { defaultCategories } from "../lib/constants";
 import Card from "../components/ui/Card";
@@ -28,11 +29,12 @@ import Card from "../components/ui/Card";
 
 export default function Settings() {
   const { user } = useAuth();
-  const { appName, salaryDay, accountType, saveProfile } = useProfile();
+  const { appName, salaryDay, accountType, telegramChatId, saveProfile } = useProfile();
 
   const [formName, setFormName] = useState("");
   const [formSalaryDay, setFormSalaryDay] = useState(1);
   const [formAccountType, setFormAccountType] = useState("personal");
+  const [formTelegramChatId, setFormTelegramChatId] = useState("");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -47,7 +49,8 @@ export default function Settings() {
     if (appName) setFormName(appName);
     if (salaryDay) setFormSalaryDay(salaryDay);
     if (accountType) setFormAccountType(accountType);
-  }, [appName, salaryDay, accountType]);
+    setFormTelegramChatId(telegramChatId || "");
+  }, [appName, salaryDay, accountType, telegramChatId]);
 
   const handleSalaryDayChange = (e) => {
     const val = e.target.value;
@@ -74,6 +77,7 @@ export default function Settings() {
         appName: formName,
         salaryDay: Number(formSalaryDay) || 1,
         accountType: formAccountType,
+        telegramChatId: formTelegramChatId.trim(),
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -286,6 +290,39 @@ export default function Settings() {
                 />
               </label>
             </div>
+          </div>
+
+          {/* Telegram Chat ID */}
+          <div className="space-y-2">
+            <label
+              htmlFor="settingsTelegramChatId"
+              className="flex items-center gap-2 text-sm font-medium text-text-primary"
+            >
+              <Send className="w-4 h-4 text-primary-500" />
+              Telegram Chat ID
+            </label>
+            <input
+              id="settingsTelegramChatId"
+              type="text"
+              value={formTelegramChatId}
+              onChange={(e) => setFormTelegramChatId(e.target.value)}
+              placeholder="Örn: 1215535881"
+              maxLength={20}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+            />
+            <p className="text-xs text-text-muted">
+              n8n üzerinden Telegram'a haftalık rapor göndermek için gereklidir.
+              Chat ID'nizi öğrenmek için Telegram'da{" "}
+              <a
+                href="https://t.me/userinfobot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:underline font-medium"
+              >
+                @userinfobot
+              </a>
+              'a mesaj atın.
+            </p>
           </div>
 
           {/* Kaydet */}

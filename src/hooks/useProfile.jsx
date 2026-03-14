@@ -29,6 +29,7 @@ export function ProfileProvider({ children }) {
   const [appName, setAppName] = useState(null);
   const [salaryDay, setSalaryDay] = useState(1);
   const [accountType, setAccountType] = useState("personal");
+  const [telegramChatId, setTelegramChatId] = useState("");
   const [profileLoading, setProfileLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
@@ -38,6 +39,7 @@ export function ProfileProvider({ children }) {
       setAppName(null);
       setSalaryDay(1);
       setAccountType("personal");
+      setTelegramChatId("");
       setProfileLoading(false);
       setNeedsOnboarding(false);
       return;
@@ -50,7 +52,7 @@ export function ProfileProvider({ children }) {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("app_name, salary_day, account_type, is_onboarded")
+          .select("app_name, salary_day, account_type, is_onboarded, telegram_chat_id")
           .eq("id", userId)
           .maybeSingle();
 
@@ -64,11 +66,13 @@ export function ProfileProvider({ children }) {
           setAppName(data?.app_name || null);
           setSalaryDay(data?.salary_day ?? 1);
           setAccountType(data?.account_type || "personal");
+          setTelegramChatId(data?.telegram_chat_id || "");
           setNeedsOnboarding(true);
         } else {
           setAppName(data.app_name);
           setSalaryDay(data.salary_day ?? 1);
           setAccountType(data.account_type || "personal");
+          setTelegramChatId(data.telegram_chat_id || "");
           setNeedsOnboarding(false);
         }
       } catch (err) {
@@ -91,7 +95,7 @@ export function ProfileProvider({ children }) {
    * Hem onboarding hem ayarlar sayfasından çağrılır.
    */
   const saveProfile = useCallback(
-    async ({ appName: name, salaryDay: day, accountType: type, isOnboarded }) => {
+    async ({ appName: name, salaryDay: day, accountType: type, isOnboarded, telegramChatId: tgChatId }) => {
       if (!userId) return;
 
       const payload = { id: userId };
@@ -99,6 +103,7 @@ export function ProfileProvider({ children }) {
       if (day !== undefined) payload.salary_day = Number(day);
       if (type !== undefined) payload.account_type = type;
       if (isOnboarded !== undefined) payload.is_onboarded = isOnboarded;
+      if (tgChatId !== undefined) payload.telegram_chat_id = tgChatId;
 
       const { error } = await supabase
         .from("profiles")
@@ -109,6 +114,7 @@ export function ProfileProvider({ children }) {
       if (name !== undefined) setAppName(name.trim());
       if (day !== undefined) setSalaryDay(Number(day));
       if (type !== undefined) setAccountType(type);
+      if (tgChatId !== undefined) setTelegramChatId(tgChatId);
       if (isOnboarded) setNeedsOnboarding(false);
     },
     [userId],
@@ -120,6 +126,7 @@ export function ProfileProvider({ children }) {
         appName,
         salaryDay,
         accountType,
+        telegramChatId,
         profileLoading,
         needsOnboarding,
         saveProfile,
