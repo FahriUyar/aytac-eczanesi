@@ -3,14 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Vercel Serverless Function — GET /api/haftalik-rapor
  *
- * Son 7 günün harcamalarını toplayıp kategorilere göre özetler.
- * n8n bu endpoint'i okuyarak haftalık rapor oluşturabilir.
+ * Telegram Chat ID'si kayıtlı tüm aktif kullanıcılar için
+ * son 7 günün harcamalarını toplayıp kategorilere göre özetler.
+ * n8n bu diziyi alıp her kullanıcıya ayrı ayrı Telegram mesajı gönderir.
  *
  * Örnek Yanıt:
- *   {
- *     "toplam_harcama": 15000,
- *     "kategoriler": { "Market": 2000, "Fatura": 1000, "Diğer": 12000 }
- *   }
+ *   [
+ *     {
+ *       "kullanici_id": "uuid-1",
+ *       "telegram_chat_id": "1215535881",
+ *       "rapor": {
+ *         "toplam_harcama": 15000,
+ *         "kategoriler": { "Market": 2000, "Fatura": 1000 },
+ *         "donem": { "baslangic": "2026-03-08", "bitis": "2026-03-15" }
+ *       }
+ *     }
+ *   ]
  *
  * Gerekli Header:
  *   x-api-key: <API_SECRET_KEY>
@@ -36,11 +44,23 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Yetkisiz erişim" });
   }
 
-  // ── 3. Kullanıcı ID ──
-  const userId = process.env.DEFAULT_USER_ID;
-  if (!userId) {
-    console.error("DEFAULT_USER_ID environment variable tanımlı değil");
-    return res.status(500).json({ error: "Sunucu yapılandırma hatası" });
+  // ── 3. Telegram Chat ID'si olan tüm aktif kullanıcıları çek ──
+  const { data: users, error: usersError } = await supabase
+    .from("profiles")
+    .select("id, telegram_chat_id")
+    .not("telegram_chat_id", "is", null)
+    .neq("telegram_chat_id", "");
+
+  if (usersError) {
+    console.error("Kullanıcı listesi çekilemedi:", usersError);
+    return res.status(500).json({
+      error: "Kullanıcılar sorgulanırken hata oluştu",
+      detail: usersError.message,
+    });
+  }
+
+  if (!users || users.length === 0) {
+    return res.status(200).json([]);
   }
 
   // ── 4. Son 7 günün tarih aralığını hesapla ──
@@ -48,46 +68,53 @@ export default async function handler(req, res) {
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(today.getDate() - 7);
 
-  // YYYY-MM-DD formatına çevir
   const startDate = sevenDaysAgo.toISOString().split("T")[0];
   const endDate = today.toISOString().split("T")[0];
 
-  // ── 5. Supabase'ten son 7 günün giderlerini çek ──
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("amount, categories(name)")
-    .eq("user_id", userId)
-    .eq("type", "expense")
-    .gte("date", startDate)
-    .lte("date", endDate);
+  // ── 5. Her kullanıcı için rapor oluştur ──
+  const raporlar = [];
 
-  if (error) {
-    console.error("Supabase sorgu hatası:", error);
-    return res.status(500).json({
-      error: "Veritabanı sorgusu sırasında hata oluştu",
-      detail: error.message,
+  for (const user of users) {
+    // Bu kullanıcının son 7 günlük giderlerini çek
+    const { data: transactions, error: txError } = await supabase
+      .from("transactions")
+      .select("amount, categories(name)")
+      .eq("user_id", user.id)
+      .eq("type", "expense")
+      .gte("date", startDate)
+      .lte("date", endDate);
+
+    if (txError) {
+      console.error(`Kullanıcı ${user.id} için sorgu hatası:`, txError);
+      continue; // Hatalı kullanıcıyı atla, diğerlerine devam et
+    }
+
+    // Toplam ve kategori bazlı hesaplama
+    let toplamHarcama = 0;
+    const kategoriler = {};
+
+    for (const tx of transactions || []) {
+      const amount = Number(tx.amount);
+      const categoryName = tx.categories?.name || "Kategorisiz";
+
+      toplamHarcama += amount;
+      kategoriler[categoryName] = (kategoriler[categoryName] || 0) + amount;
+    }
+
+    raporlar.push({
+      kullanici_id: user.id,
+      telegram_chat_id: user.telegram_chat_id,
+      rapor: {
+        toplam_harcama: Math.round(toplamHarcama * 100) / 100,
+        kategoriler,
+        donem: {
+          baslangic: startDate,
+          bitis: endDate,
+        },
+      },
     });
   }
 
-  // ── 6. Toplam ve kategori bazlı hesaplama ──
-  let toplamHarcama = 0;
-  const kategoriler = {};
-
-  for (const tx of data || []) {
-    const amount = Number(tx.amount);
-    const categoryName = tx.categories?.name || "Kategorisiz";
-
-    toplamHarcama += amount;
-    kategoriler[categoryName] = (kategoriler[categoryName] || 0) + amount;
-  }
-
-  // ── 7. Temiz JSON yanıt ──
-  return res.status(200).json({
-    toplam_harcama: Math.round(toplamHarcama * 100) / 100,
-    kategoriler,
-    donem: {
-      baslangic: startDate,
-      bitis: endDate,
-    },
-  });
+  // ── 6. Temiz JSON dizisi döndür ──
+  return res.status(200).json(raporlar);
 }
